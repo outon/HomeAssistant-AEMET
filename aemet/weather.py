@@ -118,10 +118,12 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_LATITUDE): cv.latitude,
         vol.Optional(CONF_LONGITUDE): cv.longitude,
         vol.Optional(CONF_ELEVATION): cv.small_float,
-        vol.Optional(CONF_MODE, default="hourly"): vol.In(FORECAST_MODE),
+        vol.Optional(CONF_MODE, default="daily"): vol.In(FORECAST_MODE),
         vol.Optional("cache_dir", default=DEFAULT_CACHE_DIR): cv.string,
         vol.Optional("weather_station"): cv.string,
+        vol.Optional("city"): cv.string,
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
+        vol.Optional("experimental", default=False): cv.boolean,
     }
 )
 
@@ -143,6 +145,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     cache_dir = config.get("cache_dir")
 
     weather_station = config.get("weather_station")
+    city = config.get("city")
+    experimental = config.get("experimental")
 
     aemet = AemetData(
         latitude,
@@ -151,6 +155,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         api_key=api_key,
         cache_dir=cache_dir,
         weather_station=weather_station,
+        city=city,
+        experimental=experimental,
     )
 
     add_entities([AemetWeather(name, aemet, mode)], True)
@@ -176,9 +182,8 @@ class AemetWeather(WeatherEntity):
         self._mode = mode
 
         self._aemet_data = None
-        self._aemet_currently = None
-        self._aemet_hourly = None
-        self._aemet_daily = None
+
+        self._aemet_forecast_current_hour = None
 
     @property
     def state(self):
@@ -250,7 +255,10 @@ class AemetWeather(WeatherEntity):
     @property
     def temperature(self):
         """Return the temperature."""
-        value = self._aemet_currently.get(ATTR_WEATHER_TEMPERATURE)
+        if self._aemet_data["currently"] is None:
+            return None
+
+        value = self._aemet_data["currently"]["data"].get(ATTR_WEATHER_TEMPERATURE)
         if value is None:
             value = self._aemet_forecast_current_hour.get(ATTR_WEATHER_TEMPERATURE)
         return value
@@ -263,7 +271,10 @@ class AemetWeather(WeatherEntity):
     @property
     def humidity(self):
         """Return the humidity."""
-        value = self._aemet_currently.get(ATTR_WEATHER_HUMIDITY)
+        if self._aemet_data["currently"] is None:
+            return None
+
+        value = self._aemet_data["currently"]["data"].get(ATTR_WEATHER_HUMIDITY)
         if value is None:
             value = self._aemet_forecast_current_hour.get(ATTR_WEATHER_HUMIDITY)
         return value
@@ -271,7 +282,10 @@ class AemetWeather(WeatherEntity):
     @property
     def wind_speed(self):
         """Return the wind speed."""
-        value = self._aemet_currently.get(ATTR_WEATHER_WIND_SPEED)
+        if self._aemet_data["currently"] is None:
+            return None
+
+        value = self._aemet_data["currently"]["data"].get(ATTR_WEATHER_WIND_SPEED)
         if value is None:
             value = self._aemet_forecast_current_hour.get(ATTR_WEATHER_WIND_SPEED)
         return value
@@ -279,7 +293,10 @@ class AemetWeather(WeatherEntity):
     @property
     def wind_bearing(self):
         """Return the wind bearing."""
-        value = self._aemet_currently.get(ATTR_WEATHER_WIND_BEARING)
+        if self._aemet_data["currently"] is None:
+            return None
+
+        value = self._aemet_data["currently"]["data"].get(ATTR_WEATHER_WIND_BEARING)
         if value is None:
             value = self._aemet_forecast_current_hour.get(ATTR_WEATHER_WIND_BEARING)
         return WIND_DIRECTIONS.get(value)
@@ -287,7 +304,10 @@ class AemetWeather(WeatherEntity):
     @property
     def ozone(self):
         """Return the ozone level."""
-        value = self._aemet_currently.get(ATTR_WEATHER_OZONE)
+        if self._aemet_data["currently"] is None:
+            return None
+
+        value = self._aemet_data["currently"]["data"].get(ATTR_WEATHER_OZONE)
         if value is None:
             value = self._aemet_forecast_current_hour.get(ATTR_WEATHER_OZONE)
         return value
@@ -295,7 +315,10 @@ class AemetWeather(WeatherEntity):
     @property
     def pressure(self):
         """Return the pressure."""
-        value = self._aemet_currently.get(ATTR_WEATHER_PRESSURE)
+        if self._aemet_data["currently"] is None:
+            return None
+
+        value = self._aemet_data["currently"]["data"].get(ATTR_WEATHER_PRESSURE)
         if value is None:
             value = self._aemet_forecast_current_hour.get(ATTR_WEATHER_PRESSURE)
         return value
@@ -303,7 +326,10 @@ class AemetWeather(WeatherEntity):
     @property
     def visibility(self):
         """Return the visibility."""
-        value = self._aemet_currently.get(ATTR_WEATHER_VISIBILITY)
+        if self._aemet_data["currently"] is None:
+            return None
+
+        value = self._aemet_data["currently"]["data"].get(ATTR_WEATHER_VISIBILITY)
         if value is None:
             value = self._aemet_forecast_current_hour.get(ATTR_WEATHER_VISIBILITY)
         return value
@@ -315,7 +341,10 @@ class AemetWeather(WeatherEntity):
     @property
     def condition(self):
         """Return the weather condition."""
-        condition = self._aemet_currently.get("condition")
+        if self._aemet_data["currently"] is None:
+            return None
+
+        condition = self._aemet_data["currently"].get("condition")
         if condition is None:
             condition = self._aemet_forecast_current_hour.get(
                 "condition", "desconocido"
@@ -329,9 +358,12 @@ class AemetWeather(WeatherEntity):
         fc = []
 
         if self._mode == "daily":
+            if self._aemet_data["daily"] is None:
+                return None
+
             today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
-            for entry in self._aemet_daily:
+            for entry in self._aemet_data["daily"]["data"]:
                 forecast_time = datetime.strptime(
                     entry.get(ATTR_FORECAST_TIME), "%Y-%m-%dT%H:%M:%S"
                 )
@@ -368,9 +400,12 @@ class AemetWeather(WeatherEntity):
 
                     fc.append(data)
         else:
+            if self._aemet_data["hourly"] is None:
+                return None
+
             now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
 
-            for entry in self._aemet_hourly:
+            for entry in self._aemet_data["hourly"]["data"]:
                 forecast_time = datetime.strptime(
                     entry.get(ATTR_FORECAST_TIME), "%Y-%m-%dT%H:%M:%S"
                 )
@@ -396,13 +431,11 @@ class AemetWeather(WeatherEntity):
         self._aemet.update()
 
         self._aemet_data = self._aemet.data
-        self._aemet_hourly = self._aemet.hourly.data.get("horaria").get("data")
-        self._aemet_daily = self._aemet.daily.data.get("diaria").get("data")
-        self._aemet_currently = self._aemet.currently.data.get("currently").get("data")
 
         now = datetime.now().replace(minute=0, second=0, microsecond=0).isoformat()
 
-        for prediccion in self._aemet_hourly:
-            if now == prediccion[ATTR_FORECAST_TIME]:
-                self._aemet_forecast_current_hour = prediccion
-                break
+        if self._aemet_data["hourly"] is not None:
+            for prediccion in self._aemet_data["hourly"]["data"]:
+                if now == prediccion[ATTR_FORECAST_TIME]:
+                    self._aemet_forecast_current_hour = prediccion
+                    break

@@ -3,6 +3,9 @@ and forecast from AEMET (Agencia Estatal de Metereologia)
 """
 
 from .exceptions import *
+
+# from scipy import spatial
+import math
 import json
 import logging
 import os
@@ -21,18 +24,10 @@ from homeassistant.components.weather import (
     ATTR_WEATHER_PRESSURE,
     ATTR_WEATHER_TEMPERATURE,
 )
-from homeassistant.const import (
-    ATTR_LATITUDE,
-    ATTR_LONGITUDE,
-    ATTR_ATTRIBUTION,
-)
+from homeassistant.const import ATTR_LATITUDE, ATTR_LONGITUDE, ATTR_ATTRIBUTION
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import Throttle
-from requests.exceptions import (
-    ConnectionError,
-    HTTPError,
-    Timeout,
-)
+from requests.exceptions import ConnectionError, HTTPError, Timeout
 from vincenty import vincenty
 
 
@@ -79,37 +74,28 @@ class AemetAPI:
         "horaria": "/prediccion/especifica/municipio/horaria/{}",
         "diaria": "/prediccion/especifica/municipio/diaria/{}",
     }
-    _ICONS_CONDITIONS = "http://www.aemet.es/imagenes_gcd/eltiempo/prediccion/comun/ayuda/{}.png"
+    _ICONS_CONDITIONS = (
+        "http://www.aemet.es/imagenes_gcd/eltiempo/prediccion/comun/ayuda/{}.png"
+    )
 
-    def __init__(
-        self, api_key, cache_dir=DEFAULT_CACHE_DIR
-    ):
-        _LOGGER.debug(
-            "Creating instance of AemetAPI, using parameters"
-        )
-        _LOGGER.debug(
-            "api_key\t%s[...]%s",
-            api_key[:20],
-            api_key[-20:],
-        )
+    def __init__(self, api_key, cache_dir=DEFAULT_CACHE_DIR):
+        _LOGGER.debug("Creating instance of AemetAPI, using parameters")
+        _LOGGER.debug("api_key\t%s[...]%s", api_key[:20], api_key[-20:])
         _LOGGER.debug("cache_dir\t%s", cache_dir)
 
         self._api_key = api_key
         self._cache_dir = cache_dir
         self._init_cache(cache_dir)
 
-    def _init_cache(self, cache_dir):
+    @staticmethod
+    def _init_cache(cache_dir):
         """Init cache folder."""
         try:
             if not os.path.isdir(cache_dir):
-                _LOGGER.debug(
-                    "Create cache dir %s.", cache_dir
-                )
+                _LOGGER.debug("Create cache dir %s.", cache_dir)
                 os.mkdir(cache_dir)
         except OSError as err:
-            raise HomeAssistantError(
-                "Can't init cache dir {}".format(err)
-            )
+            raise HomeAssistantError("Can't init cache dir {}".format(err))
 
     def aemet_load_from_file(self, api_url):
         """Load data cached locally."""
@@ -127,21 +113,13 @@ class AemetAPI:
                 file = k
                 break
         if file is None:
-            raise HomeAssistantError(
-                "Can't find API method for {}".format(
-                    api_url
-                )
-            )
-        filename = os.path.join(
-            self._cache_dir, file + ".json"
-        )
+            raise HomeAssistantError("Can't find API method for {}".format(api_url))
+        filename = os.path.join(self._cache_dir, file + ".json")
         try:
             with open(filename, "r") as infile:
                 data = json.load(infile)
         except OSError:
-            _LOGGER.info(
-                "Can't find cache file %s", filename
-            )
+            _LOGGER.info("Can't find cache file %s", filename)
             return None
         return data
 
@@ -150,20 +128,15 @@ class AemetAPI:
         :param file: name of file
         :param data: json to be stored
         """
-        filename = os.path.join(
-            self._cache_dir, file + ".json"
-        )
+        filename = os.path.join(self._cache_dir, file + ".json")
         try:
             with open(filename, "w") as outfile:
                 json.dump(data, outfile, indent=2)
         except OSError:
-            _LOGGER.info(
-                "Can't write on cache file %s", file
-            )
+            _LOGGER.info("Can't write on cache file %s", file)
 
-    def _api_request(
-        self, data_url: str, api_key: str = None
-    ):
+    @staticmethod
+    def _api_request(data_url: str, api_key: str = None):
         """Load data from AEMET.
         :param data_url: API call url
         :param api_key: API private key
@@ -177,38 +150,19 @@ class AemetAPI:
             if api_key is None:
                 response = requests.get(data_url)
             else:
-                response = requests.get(
-                    data_url, params=params
-                )
-        except (
-            ConnectionError,
-            HTTPError,
-            Timeout,
-            ValueError,
-        ) as error:
-            _LOGGER.error(
-                "Unable to retrieve data from AEMET. %s",
-                error,
-            )
+                response = requests.get(data_url, params=params)
+        except (ConnectionError, HTTPError, Timeout, ValueError) as error:
+            _LOGGER.error("Unable to retrieve data from AEMET. %s", error)
             return []
         aemet_response = response.json()
 
         return aemet_response
 
-    def api_call(
-        self,
-        api_url: str,
-        direct_call: bool = False,
-        cached: bool = False,
-    ):
+    def api_call(self, api_url: str, direct_call: bool = False, cached: bool = False):
         """Call to AEMET OpenData API services."""
 
         _LOGGER.debug("api_url: %s", api_url)
-        _LOGGER.debug(
-            "api_key: %s[...]%s",
-            self._api_key[:20],
-            self._api_key[-20:],
-        )
+        _LOGGER.debug("api_key: %s[...]%s", self._api_key[:20], self._api_key[-20:])
 
         if cached:
             _LOGGER.debug("Loading cache data...")
@@ -223,42 +177,24 @@ class AemetAPI:
             # Get staged data
             _LOGGER.debug("Loading staged data...")
 
-            aemet_response = self._api_request(
-                api_url, api_key=self._api_key
-            )
+            aemet_response = self._api_request(api_url, api_key=self._api_key)
 
             estado = aemet_response.get("estado")
-            descripcion = aemet_response.get(
-                "descripcion", "No description provided"
-            )
+            descripcion = aemet_response.get("descripcion", "No description provided")
             datos = aemet_response.get("datos")
             # metadatos = aemet_response.get('metadatos')
 
             if estado is None:
-                _LOGGER.error(
-                    "Could not retrieve data from AEMET"
-                )
+                _LOGGER.error("Could not retrieve data from AEMET")
                 raise NoResponseException
             elif estado == HTTP_UNAUTHORIZED:  # 401
-                _LOGGER.error(
-                    "Unauthorized. Error %s, %s",
-                    estado,
-                    descripcion,
-                )
+                _LOGGER.error("Unauthorized. Error %s, %s", estado, descripcion)
                 raise InvalidApiKey
             elif estado == HTTP_NOT_FOUND:  # 404
-                _LOGGER.error(
-                    "Not found. Error %s, %s",
-                    estado,
-                    descripcion,
-                )
+                _LOGGER.error("Not found. Error %s, %s", estado, descripcion)
                 raise NotFound
             elif estado == HTTP_TOO_MANY_REQUESTS:  # 429
-                _LOGGER.info(
-                    "Too many requests. Error %s, %s",
-                    estado,
-                    descripcion,
-                )
+                _LOGGER.info("Too many requests. Error %s, %s", estado, descripcion)
                 raise TooManyRequests
             elif estado != HTTP_OK:
                 _LOGGER.info(
@@ -268,16 +204,12 @@ class AemetAPI:
                 )
                 raise AemetException
             # Get final data
-            aemet_data = self._api_request(
-                datos, api_key=self._api_key
-            )
+            aemet_data = self._api_request(datos, api_key=self._api_key)
         else:
             # There exists at least one API call that do not use staged data, but direct call.
             _LOGGER.debug("Loading direct data...")
 
-            aemet_data = self._api_request(
-                api_url, api_key=self._api_key
-            )
+            aemet_data = self._api_request(api_url, api_key=self._api_key)
         return aemet_data
 
 
@@ -286,13 +218,13 @@ class AemetMasterRecord:
 
     def __init__(
         self,
-        entityclass,
-        api_client=None,
-        weather_station=None,
+        entityclass: str,
+        api_client: AemetAPI = None,
+        weather_station: str = None,
+        city: str = None,
+        experimental: bool = False,
     ):
-        _LOGGER.debug(
-            "Creating instance of AemetMasterRecord, using parameters"
-        )
+        _LOGGER.debug("Creating instance of AemetMasterRecord, using parameters")
         _LOGGER.debug("entity\t%s", entityclass)
         _LOGGER.debug("api\t%s", api_client)
 
@@ -302,74 +234,90 @@ class AemetMasterRecord:
             raise ValueError
         self._entityClass = entityclass
 
-        if (
-            weather_station is not None
-            and entityclass == "estaciones"
-        ):
+        if weather_station is not None and entityclass == "estaciones":
             self.nearest = weather_station
+        elif city is not None and entityclass == "ciudades":
+            self.nearest = city
         else:
             self.nearest = None
         self.api_client = api_client
+        self._location_tree = None
+
+        # Default method to search
+        self._nearest_location = (
+            self._nearest_location_iterate
+        )  # Compatible with RPI, slower
+        # if experimental:
+        #     self._nearest_location = (
+        #         self._nearest_location_kdtree
+        #     )  # Not tested in a RPI, faster
 
     def _write_master_data(self, force=False):
         if self.data is None:
             return
         last_saved = datetime.strptime(
-            self.data.get("saved", datetime.now()),
-            "%Y-%m-%dT%H:%M:%S",
+            self.data.get("saved", datetime.now()), "%Y-%m-%dT%H:%M:%S"
         )
         elapsed = datetime.now() - last_saved
         if elapsed < timedelta(minutes=5) or force:
-            self.api_client.save_to_file(
-                self._entityClass, self.data
-            )
+            self.api_client.save_to_file(self._entityClass, self.data)
 
-    def _nearest_location(self, location: tuple):
+    # def _nearest_location_kdtree(self, location: tuple) -> tuple:
+    #     """Find nearest point in a list of points to a given location using KDTree.
+    #
+    #     This function is faster but cannot use it in a rpi environment due to limitations using scipy package.
+    #
+    #     :param location: reference location to find closest point
+    #     :return: distance and closest point to location"""
+    #
+    #     def cartesian(latitude, longitude, elevation=0):
+    #         """Convert to radians"""
+    #         latitude = latitude * (math.pi / 180)
+    #         longitude = longitude * (math.pi / 180)
+    #
+    #         R = (6378137.0 + elevation) / 1000.0  # relative to centre of the earth
+    #         X = R * math.cos(latitude) * math.cos(longitude)
+    #         Y = R * math.cos(latitude) * math.sin(longitude)
+    #         Z = R * math.sin(latitude)
+    #         return (X, Y, Z)
+    #
+    #     def find_closest(list_locations, location):
+    #
+    #         if self._location_tree is None:
+    #             places = []  # create a list of points with cartesian coordinates
+    #             for points in list_locations:
+    #                 coordinates = (
+    #                     float(points["latitud"]),
+    #                     float(points["longitud"]),
+    #                     float(points["altitud"]),
+    #                 )
+    #                 cartesian_coord = cartesian(*coordinates)
+    #                 places.append(cartesian_coord)
+    #
+    #             self._location_tree = spatial.KDTree(
+    #                 places
+    #             )  # create a KDTree with those points
+    #
+    #         cartesian_coord = cartesian(*location)
+    #         closest = self._location_tree.query([cartesian_coord], p=2)
+    #         distance = closest[0][0]
+    #         location_index = closest[1][0]
+    #         return distance, location_index
+    #
+    #     if self.data is None:
+    #         return None, None
+    #
+    #     list_locations = self.data[self._entityClass]
+    #     (distance, index) = find_closest(list_locations, location)
+    #
+    #     return distance, list_locations[index]
+
+    def _nearest_location_iterate(self, location: tuple):
         """Find nearest city or weather station given my current location
         :type location: tuple
         :param location: my current location
         :return: dictionary with information of cit or weather station
         """
-
-        # def __nearest_location(list_locations: list, location: tuple) -> tuple:
-        #     """Find nearest point in a list of points to a given location using KDTree.
-        #
-        #     This function is faster but cannot use it in a rpi environment due to limitations using scipy package.
-        #
-        #     :param list_locations: list of point
-        #     :param location: reference location to find closest point
-        #     :return: closest point to location"""
-        #     import math
-        #     from scipy import spatial
-        #
-        #     def cartesian(latitude, longitude, elevation=0):
-        #         """Convert to radians"""
-        #         latitude = latitude * (math.pi / 180)
-        #         longitude = longitude * (math.pi / 180)
-        #
-        #         R = (6378137.0 + elevation) / 1000.0  # relative to centre of the earth
-        #         X = R * math.cos(latitude) * math.cos(longitude)
-        #         Y = R * math.cos(latitude) * math.sin(longitude)
-        #         Z = R * math.sin(latitude)
-        #         return (X, Y, Z)
-        #
-        #     def find_closest(lat, lon, alt):
-        #         cartesian_coord = cartesian(lat, lon, alt)
-        #         closest = tree.query([cartesian_coord], p=2)
-        #         index = closest[1][0]
-        #         return index
-        #
-        #     places = []  # create a list of points with cartesian coordinates
-        #     for estacion in list_locations:
-        #         coordinates = (float(estacion['latitud']), float(estacion['longitud']), float(estacion['altitud']))
-        #         cartesian_coord = cartesian(*coordinates)
-        #         places.append(cartesian_coord)
-        #
-        #     tree = spatial.KDTree(places)
-        #
-        #     index = find_closest(*location)
-        #
-        #     return list_locations[index]
 
         def distance(point1: tuple, point2: tuple):
             """Calculate the distance in kilometers between two points using vincenty function
@@ -377,9 +325,7 @@ class AemetMasterRecord:
             :param point2: coordinates (latitude, longitude) of point 1
             :return: distance in kilometers between two points
             """
-            if None in point1:
-                return None
-            if None in point2:
+            if None in (point1, point2):
                 return None
             result = vincenty(point1, point2)
             if result is None:
@@ -394,34 +340,25 @@ class AemetMasterRecord:
             places = []
             nearest = None
             for point in list_locations:
-                coordinates = (
-                    float(point["latitud"]),
-                    float(point["longitud"]),
-                )
-                point_distance = distance(
-                    coordinates, location
-                )
-                if (
-                    nearest_distance is None
-                    or point_distance < nearest_distance
-                ):
+                coordinates = (float(point["latitud"]), float(point["longitud"]))
+                point_distance = distance(coordinates, location)
+                if nearest_distance is None or point_distance < nearest_distance:
                     nearest_distance = point_distance
                     nearest_codigo = point["codigo"]
-                places.append(
-                    [point["codigo"], point_distance]
-                )
+                places.append([point["codigo"], point_distance])
             for point in list_locations:
                 if point["codigo"] == nearest_codigo:
                     nearest = point
                     break
-            return nearest
+            return nearest_distance, nearest
 
-        self.api_client.save_to_file("debug", self.data)
-        closest_location = nearest_location(
-            self.data[self._entityClass], location
-        )
+        if self.data is None:
+            return None, None
 
-        return closest_location
+        list_locations = self.data[self._entityClass]
+        (distance, closest_location) = nearest_location(list_locations, location)
+
+        return distance, closest_location
 
     def update_distance(self, location, force=False):
         """Get nearest place to given location."""
@@ -432,8 +369,35 @@ class AemetMasterRecord:
                 if v.get("codigo") == nearest:
                     self.nearest = v
                     break
+            if isinstance(self.nearest, str):
+                raise ValueError("Weather station or City code is not valid")
+
         if self.nearest is None or force:
-            self.nearest = self._nearest_location(location)
+            (distance, self.nearest) = self._nearest_location(location)
+
+        distance = vincenty(
+            location, (self.nearest["latitud"], self.nearest["longitud"])
+        )
+        """
+        If the distance to my location is more than 25 km, the city must not be in Spain.
+
+        On the website http://www.geomidpoint.com/random/ we can obtain up to 2000 random points 
+        in a radius of 600 km around the centre of Spain (usually Cerro de los Ángeles, Madrid).
+
+        We calculate the distance from those random points to the nearest city and on 
+        website http://www.copypastemap.com/ we can trace those points with colors depending on the distance.
+
+        All points further than 25 km from a city are outside the Spanish border."""
+
+        if distance > 25.0 and self._entityClass == "ciudades":
+            self.nearest = None
+
+        """This is not true when looking for a weather station. The farthest points of 40 km 
+        are the most likely to be outside the Spanish border. But there are places 
+        between 25 and 40 km within Spain."""
+
+        if distance > 40.0 and self._entityClass == "estaciones":
+            self.nearest = None
 
     def _clean_master_data(self, data):
         """Cleans data received from AEMET."""
@@ -461,9 +425,7 @@ class AemetMasterRecord:
         clean_data = []
         for entity in data:
             clean_entity = {
-                MAP_FIELDS[k]: v
-                for k, v in entity.items()
-                if k in MAP_FIELDS
+                MAP_FIELDS[k]: v for k, v in entity.items() if k in MAP_FIELDS
             }
             clean_entity["codigo"] = (
                 clean_entity["codigo"][2:]
@@ -476,9 +438,7 @@ class AemetMasterRecord:
             }
             clean_data.append(clean_entity)
         final_data = {
-            "saved": datetime.now()
-            .replace(microsecond=0)
-            .isoformat(),
+            "saved": datetime.now().replace(microsecond=0).isoformat(),
             self._entityClass: clean_data,
         }
 
@@ -486,25 +446,19 @@ class AemetMasterRecord:
 
     def _get_master_data(self, cached=False):
         """Get master data: List of cities or Weather stations"""
-        _LOGGER.debug(
-            "Get master data for: %s ", self._entityClass
-        )
+        _LOGGER.debug("Get master data for: %s ", self._entityClass)
 
         endpoint_url = "{}{}".format(
             self.api_client.API_BASE_URL,
-            self.api_client.API_MASTER_RECORDS.get(
-                self._entityClass
-            ),
+            self.api_client.API_MASTER_RECORDS.get(self._entityClass),
         )
         # when retrieving data for 'municipios' we should do a direct api call, not an staged one.
         direct_call = self._entityClass == "ciudades"
-        raw_data = self.api_client.api_call(
-            endpoint_url, direct_call, cached
-        )
+        raw_data = self.api_client.api_call(endpoint_url, direct_call, cached)
 
         return raw_data
 
-    def update(self, api_client=None):
+    def update(self, api_client: AemetAPI = None):
         _LOGGER.debug("Updating AEMET Master Records.")
 
         if api_client is not None:
@@ -514,23 +468,18 @@ class AemetMasterRecord:
         if self.data is None:
             raw_data = self._get_master_data(cached=True)
             if isinstance(raw_data, list):
-                self.data = self._clean_master_data(
-                    raw_data
-                )
+                self.data = self._clean_master_data(raw_data)
             else:
                 self.data = raw_data
+            self._location_tree = (
+                None
+            )  # Remove KDTree as we have loaded a new set of data
         else:
-            last_saved = datetime.strptime(
-                self.data.get("saved"), "%Y-%m-%dT%H:%M:%S"
-            )
+            last_saved = datetime.strptime(self.data.get("saved"), "%Y-%m-%dT%H:%M:%S")
             elapsed = datetime.now() - last_saved
             if timedelta(days=7) < elapsed:
-                raw_data = self._get_master_data(
-                    cached=False
-                )
-                self.data = self._clean_master_data(
-                    raw_data
-                )
+                raw_data = self._get_master_data(cached=False)
+                self.data = self._clean_master_data(raw_data)
         self._write_master_data()
 
 
@@ -586,13 +535,9 @@ class AemetForecast:
         ATTR_FORECAST_WIND_SPEED,
     )
 
-    def __init__(
-        self, forecastmode, city=None, api_client=None
-    ):
+    def __init__(self, forecastmode, city=None, api_client=None):
         """Initialize the data object."""
-        _LOGGER.debug(
-            "Creating instance of AemetForecast, using parameters"
-        )
+        _LOGGER.debug("Creating instance of AemetForecast, using parameters")
         _LOGGER.debug("forecast\t%s", forecastmode)
         _LOGGER.debug("city\t%s", city)
         _LOGGER.debug("api\t%s", api_client)
@@ -615,13 +560,8 @@ class AemetForecast:
                 ini_periodo = variable["periodo"][:2]
                 fin_periodo = variable["periodo"][-2:]
                 if ini_periodo == fin_periodo:
-                    intervalo = "{}T{}:00:00".format(
-                        fecha, ini_periodo
-                    )
-                elif (
-                    ini_periodo == "00"
-                    and fin_periodo == "24"
-                ):
+                    intervalo = "{}T{}:00:00".format(fecha, ini_periodo)
+                elif ini_periodo == "00" and fin_periodo == "24":
                     intervalo = "{}T00:00:00".format(fecha)
                 else:
                     intervalo = "{}T{}:00:00 & {}".format(
@@ -629,23 +569,13 @@ class AemetForecast:
                     )
             return intervalo
 
-        def inner_transform(
-            data,
-            sensor,
-            fields,
-            append=False,
-            replace=False,
-        ):
+        def inner_transform(data, sensor, fields, append=False, replace=False):
             interval = _periodo(data, fecha)
             if interval not in transformed_data:
                 transformed_data[interval] = {}
             for field in fields:
                 name = field if replace else sensor
-                name = (
-                    "{}_{}".format(name, field.capitalize())
-                    if append
-                    else name
-                )
+                name = "{}_{}".format(name, field.capitalize()) if append else name
 
                 name = self._MAP_FIELDS.get(name)
                 if name is None:
@@ -655,51 +585,26 @@ class AemetForecast:
                     pass
                 elif isinstance(resultado, list):
                     if resultado[0] != "":
-                        transformed_data[interval][
-                            name
-                        ] = resultado[0]
+                        transformed_data[interval][name] = resultado[0]
                 else:
                     if resultado != "":
-                        transformed_data[interval][
-                            name
-                        ] = resultado
+                        transformed_data[interval][name] = resultado
 
-        def transform(
-            data,
-            sensors,
-            fields,
-            append=False,
-            replace=False,
-        ):
+        def transform(data, sensors, fields, append=False, replace=False):
             for sensor in sensors:
                 sensor_data = data.get(sensor)
                 if sensor_data is None:
                     continue
                 if isinstance(sensor_data, list):
                     for lista_datos in sensor_data:
-                        inner_transform(
-                            lista_datos,
-                            sensor,
-                            fields,
-                            append,
-                            replace,
-                        )
+                        inner_transform(lista_datos, sensor, fields, append, replace)
                 else:
                     lista_datos = sensor_data
-                    inner_transform(
-                        lista_datos,
-                        sensor,
-                        fields,
-                        append,
-                        replace,
-                    )
+                    inner_transform(lista_datos, sensor, fields, append, replace)
 
         version = str(raw_data[0]["version"])
         if version != "1.0":
-            _LOGGER.info(
-                "Version %s of AEMET schema is not supported",
-                version,
-            )
+            _LOGGER.info("Version %s of AEMET schema is not supported", version)
             return None
         copyright = raw_data[0]["origen"]
         header = {
@@ -716,26 +621,11 @@ class AemetForecast:
             #    list of sensor,      list of field,     append, replace
             schema_definition = [
                 (["estadoCielo"], ["value"], False, False),
-                (
-                    ["estadoCielo"],
-                    ["descripcion"],
-                    False,
-                    True,
-                ),
+                (["estadoCielo"], ["descripcion"], False, True),
                 (["temperatura"], ["maxima"], False, False),
                 (["temperatura"], ["minima"], True, False),
-                (
-                    ["humedadRelativa"],
-                    ["maxima"],
-                    False,
-                    False,
-                ),
-                (
-                    ["humedadRelativa"],
-                    ["minima"],
-                    True,
-                    False,
-                ),
+                (["humedadRelativa"], ["maxima"], False, False),
+                (["humedadRelativa"], ["minima"], True, False),
                 (["viento"], ["direccion"], True, False),
                 (["viento"], ["velocidad"], True, False),
             ]
@@ -743,39 +633,14 @@ class AemetForecast:
             #    list of sensor,      list of field,    append, replace
             schema_definition = [
                 (["estadoCielo"], ["value"], False, False),
-                (
-                    ["estadoCielo"],
-                    ["descripcion"],
-                    False,
-                    True,
-                ),
+                (["estadoCielo"], ["descripcion"], False, True),
                 (["temperatura"], ["value"], False, False),
-                (
-                    ["precipitacion"],
-                    ["value"],
-                    False,
-                    False,
-                ),
+                (["precipitacion"], ["value"], False, False),
                 (["nieve"], ["value"], False, False),
                 (["sensTermica"], ["value"], False, False),
-                (
-                    ["humedadRelativa"],
-                    ["value"],
-                    False,
-                    False,
-                ),
-                (
-                    ["vientoAndRachaMax"],
-                    ["direccion"],
-                    True,
-                    False,
-                ),
-                (
-                    ["vientoAndRachaMax"],
-                    ["velocidad"],
-                    True,
-                    False,
-                ),
+                (["humedadRelativa"], ["value"], False, False),
+                (["vientoAndRachaMax"], ["direccion"], True, False),
+                (["vientoAndRachaMax"], ["velocidad"], True, False),
             ]
         for forecast in raw_data[0]["prediccion"]["dia"]:
             fecha = forecast.get("fecha")
@@ -801,28 +666,17 @@ class AemetForecast:
                     except:
                         continue
         # Keep only data with specific key length, transform it to a list and sort it.
-        sorted_data = [
-            v
-            for k, v in transformed_data.items()
-            if len(k) == 19
-        ]
-        sorted_data = sorted(
-            sorted_data, key=itemgetter(ATTR_FORECAST_TIME)
-        )
+        sorted_data = [v for k, v in transformed_data.items() if len(k) == 19]
+        sorted_data = sorted(sorted_data, key=itemgetter(ATTR_FORECAST_TIME))
 
-        final_data = {
-            "information": header,
-            "data": sorted_data,
-        }
+        final_data = {"information": header, "data": sorted_data}
         return final_data
 
     def _load_forecast_data(self, city):
         """Get station data"""
         endpoint_url = "{}{}".format(
             self.api_client.API_BASE_URL,
-            self.api_client.API_FORECAST[
-                self._forecastmode
-            ].format(city),
+            self.api_client.API_FORECAST[self._forecastmode].format(city),
         )
         raw_data = self.api_client.api_call(endpoint_url)
         return raw_data
@@ -833,17 +687,13 @@ class AemetForecast:
         codigo = self.nearest.get("codigo")
         city = self.nearest.get("nombre")
 
-        _LOGGER.debug(
-            "Updating weather forecast for city %s", city
-        )
+        _LOGGER.debug("Updating weather forecast for city %s", city)
 
         raw_data = self._load_forecast_data(codigo)
         clean_data = None
 
         if raw_data is None:
-            _LOGGER.info(
-                "No weather forecast received from AEMET"
-            )
+            _LOGGER.info("No weather forecast received from AEMET")
         else:
             clean_data = self._refactor_forecast(raw_data)
         return clean_data
@@ -854,23 +704,21 @@ class AemetForecast:
             self.nearest = nearest
         if api_client is not None:
             self.api_client = api_client
-        if None in (self.nearest, self.api_client):
-            raise ValueError
+        # if None in (self.nearest, self.api_client):
+        #     raise ValueError
         # Update weather forecast
-        data = self._update_forecast()
+        try:
+            data = self._update_forecast()
+        except ValueError:
+            _LOGGER.info("No data retrieved")
+            return False
 
         self.data = {
             self._forecastmode: data,
-            "saved": (
-                datetime.now()
-                .replace(microsecond=0)
-                .isoformat()
-            ),
+            "saved": (datetime.now().replace(microsecond=0).isoformat()),
         }
 
-        self.api_client.save_to_file(
-            self._forecastmode, self.data
-        )
+        self.api_client.save_to_file(self._forecastmode, self.data)
 
 
 class AemetWeather:
@@ -926,9 +774,7 @@ class AemetWeather:
 
     def __init__(self, station=None, api_client=None):
         """Initialize the data object."""
-        _LOGGER.debug(
-            "Creating instance of AemetWeather, using parameters"
-        )
+        _LOGGER.debug("Creating instance of AemetWeather, using parameters")
         _LOGGER.debug("station\t%s", station)
         _LOGGER.debug("api\t%s", api_client)
 
@@ -948,46 +794,25 @@ class AemetWeather:
     def _clean_currently_data(self, raw_data):
 
         # Sort data by time to keep latest.
-        sorted_data = sorted(
-            raw_data, key=itemgetter("fint")
-        )
+        sorted_data = sorted(raw_data, key=itemgetter("fint"))
         remapped_data = self._remap_keys(sorted_data[-1])
 
-        delete = (
-            "location",
-            "weather_station",
-            "latitude",
-            "longitude",
-            "altitude",
-        )
+        delete = ("location", "weather_station", "latitude", "longitude", "altitude")
 
         # In station_info we store data that is removed from weather data
-        station_info = {
-            info: remapped_data[info] for info in delete
-        }
+        station_info = {info: remapped_data[info] for info in delete}
         station_info[ATTR_ATTRIBUTION] = ATTRIBUTION
 
-        clean_data = {
-            k: v
-            for k, v in remapped_data.items()
-            if k not in delete
-        }
+        clean_data = {k: v for k, v in remapped_data.items() if k not in delete}
 
-        return {
-            "information": station_info,
-            "data": clean_data,
-        }
+        return {"information": station_info, "data": clean_data}
 
     def _load_current_data(self, station_id):
         """Get station data"""
-        _LOGGER.debug(
-            "Loading data from station %s", station_id
-        )
+        _LOGGER.debug("Loading data from station %s", station_id)
         endpoint_url = "{}{}".format(
             self.api_client.API_BASE_URL,
-            self.api_client.API_WEATHER["estacion"].format(
-                station_id
-            ),
+            self.api_client.API_WEATHER["estacion"].format(station_id),
         )
         raw_data = self.api_client.api_call(endpoint_url)
 
@@ -995,25 +820,18 @@ class AemetWeather:
 
     def _update_currently(self):
         if self.nearest is None:
-            raise ValueError
+            raise ValueError("Nearest weather station or city not defined")
         station_id = self.nearest.get("codigo")
 
-        _LOGGER.debug(
-            "Updating meteorological data from station %s",
-            station_id,
-        )
+        _LOGGER.debug("Updating meteorological data from station %s", station_id)
 
         raw_data = self._load_current_data(station_id)
         clean_data = None
         # Transform data
         if raw_data is None:
-            _LOGGER.info(
-                "No meteorological data received from AEMET"
-            )
+            _LOGGER.info("No meteorological data received from AEMET")
         else:
-            clean_data = self._clean_currently_data(
-                raw_data
-            )
+            clean_data = self._clean_currently_data(raw_data)
         return clean_data
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
@@ -1023,15 +841,15 @@ class AemetWeather:
         if api_client is not None:
             self.api_client = api_client
         # Update current weather
-        data = self._update_currently()
+        try:
+            data = self._update_currently()
+        except ValueError:
+            _LOGGER.info("No data retrieved")
+            return False
 
         self.data = {
             "currently": data,
-            "saved": (
-                datetime.now()
-                .replace(microsecond=0)
-                .isoformat()
-            ),
+            "saved": (datetime.now().replace(microsecond=0).isoformat()),
         }
 
         self.api_client.save_to_file("currently", self.data)
@@ -1042,32 +860,21 @@ class AemetData:
 
     def __init__(
         self,
-        latitude,
-        longitude,
-        elevation=0,
-        api_key=None,
-        cache_dir=DEFAULT_CACHE_DIR,
-        weather_station=None,
+        latitude: float,
+        longitude: float,
+        elevation: float = 0.0,
+        api_key: str = None,
+        cache_dir: str = DEFAULT_CACHE_DIR,
+        weather_station: str = None,
+        city: str = None,
+        experimental: bool = False,
     ):
         """Initialize the data object."""
-        _LOGGER.debug(
-            "Creating instance of AemetData, using parameters"
-        )
-        _LOGGER.debug(
-            "location\t(%s, %s, %s)",
-            latitude,
-            longitude,
-            elevation,
-        )
-        _LOGGER.debug(
-            "api_key\t%s[...]%s",
-            api_key[:20],
-            api_key[-20:],
-        )
+        _LOGGER.debug("Creating instance of AemetData, using parameters")
+        _LOGGER.debug("location\t(%s, %s, %s)", latitude, longitude, elevation)
+        _LOGGER.debug("api_key\t%s[...]%s", api_key[:20], api_key[-20:])
         _LOGGER.debug("cache_dir\t%s", cache_dir)
-        _LOGGER.debug(
-            "Weather Station\t%s", weather_station
-        )
+        _LOGGER.debug("Weather Station\t%s", weather_station)
 
         self.api_client = None
         self._api_key = api_key
@@ -1081,39 +888,30 @@ class AemetData:
             "estaciones",
             self.api_client,
             weather_station=weather_station,
+            experimental=experimental,
         )
         self.cities = AemetMasterRecord(
-            "ciudades", self.api_client
+            "ciudades", self.api_client, city=city, experimental=experimental
         )
 
-        self.currently = AemetWeather(
-            api_client=self.api_client
-        )
-        self.hourly = AemetForecast(
-            "horaria", api_client=self.api_client
-        )
-        self.daily = AemetForecast(
-            "diaria", api_client=self.api_client
-        )
+        self.currently = AemetWeather(api_client=self.api_client)
+        self.hourly = AemetForecast("horaria", api_client=self.api_client)
+        self.daily = AemetForecast("diaria", api_client=self.api_client)
 
         self.data = None
 
-    def update_location(
-        self, latitude, longitude, elevation=0
-    ):
+        self.__experimental = experimental
 
-        if latitude is None:
-            raise ValueError
-        if longitude is None:
+    def update_location(self, latitude, longitude, elevation=0):
+
+        if None in (latitude, longitude):
             raise ValueError
         self.location = (latitude, longitude, elevation)
 
-        self.cities.update_distance(self.location)
-        self.weather_stations.update_distance(self.location)
+        self.cities.update_distance(self.location, force=True)
+        self.weather_stations.update_distance(self.location, force=True)
 
-        self.currently.nearest = (
-            self.weather_stations.nearest
-        )
+        self.currently.nearest = self.weather_stations.nearest
         self.hourly.nearest = self.cities.nearest
         self.daily.nearest = self.cities.nearest
 
@@ -1127,31 +925,26 @@ class AemetData:
         self.weather_stations.update()
         self.weather_stations.update_distance(self.location)
         self.currently.update(
-            nearest=self.weather_stations.nearest,
-            api_client=self.api_client,
+            nearest=self.weather_stations.nearest, api_client=self.api_client
         )
 
         # Update weather forecast
         self.cities.update()
         self.cities.update_distance(self.location)
-        self.hourly.update(
-            nearest=self.cities.nearest,
-            api_client=self.api_client,
-        )
-        self.daily.update(
-            nearest=self.cities.nearest,
-            api_client=self.api_client,
-        )
+        self.hourly.update(nearest=self.cities.nearest, api_client=self.api_client)
+        self.daily.update(nearest=self.cities.nearest, api_client=self.api_client)
 
         self.data = {
-            "currently": self.currently.data["currently"],
-            "hourly": self.hourly.data["horaria"],
-            "daily": self.daily.data["diaria"],
-            "saved": (
-                datetime.now()
-                .replace(microsecond=0)
-                .isoformat()
-            ),
+            "currently": self.currently.data.get("currently", None)
+            if self.currently.data is not None
+            else None,
+            "hourly": self.hourly.data.get("horaria", None)
+            if self.hourly.data is not None
+            else None,
+            "daily": self.daily.data.get("diaria", None)
+            if self.daily.data is not None
+            else None,
+            "saved": (datetime.now().replace(microsecond=0).isoformat()),
         }
 
         self.api_client.save_to_file("data", self.data)
