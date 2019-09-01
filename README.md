@@ -10,7 +10,7 @@ To use this component in your Home Assistant you will need to obtain a personal/
 
 ⚠️ All information is in Spanish. 
 
-###Getting started
+## Getting started
 
 Place the files of `aemet` component at this location on your setup: 
 
@@ -19,7 +19,7 @@ Place the files of `aemet` component at this location on your setup:
 
 And then restart Home Assistant to make sure the component loads.
 
-####Example configuration.yaml
+#### Example configuration.yaml
 
 This simple configuration will load the component with your current location from location defined at your Home Assistant. 
 ```yaml
@@ -38,7 +38,7 @@ weather:
 
 ``` 
 
-####Config options:
+#### Config options:
 
 | key | required | default value | description
 | --- | --- | --- | ---
