@@ -3,6 +3,9 @@ and forecast from AEMET (Agencia Estatal de Metereologia)
 """
 
 from .exceptions import *
+
+# from scipy import spatial
+import math
 import json
 import logging
 import os
@@ -84,7 +87,8 @@ class AemetAPI:
         self._cache_dir = cache_dir
         self._init_cache(cache_dir)
 
-    def _init_cache(self, cache_dir):
+    @staticmethod
+    def _init_cache(cache_dir):
         """Init cache folder."""
         try:
             if not os.path.isdir(cache_dir):
@@ -131,7 +135,8 @@ class AemetAPI:
         except OSError:
             _LOGGER.info("Can't write on cache file %s", file)
 
-    def _api_request(self, data_url: str, api_key: str = None):
+    @staticmethod
+    def _api_request(data_url: str, api_key: str = None):
         """Load data from AEMET.
         :param data_url: API call url
         :param api_key: API private key
@@ -176,6 +181,8 @@ class AemetAPI:
 
             estado = aemet_response.get("estado")
             descripcion = aemet_response.get("descripcion", "No description provided")
+            datos = aemet_response.get("datos")
+            # metadatos = aemet_response.get('metadatos')
 
             if estado is None:
                 _LOGGER.error("Could not retrieve data from AEMET")
@@ -197,8 +204,6 @@ class AemetAPI:
                 )
                 raise AemetException
             # Get final data
-            datos = aemet_response.get("datos")
-            # metadatos = aemet_response.get('metadatos')
             aemet_data = self._api_request(datos, api_key=self._api_key)
         else:
             # There exists at least one API call that do not use staged data, but direct call.
@@ -211,7 +216,14 @@ class AemetAPI:
 class AemetMasterRecord:
     _ENTITIES = ["ciudades", "estaciones"]
 
-    def __init__(self, entityclass, api_client=None, weather_station=None):
+    def __init__(
+        self,
+        entityclass: str,
+        api_client: AemetAPI = None,
+        weather_station: str = None,
+        city: str = None,
+        experimental: bool = False,
+    ):
         _LOGGER.debug("Creating instance of AemetMasterRecord, using parameters")
         _LOGGER.debug("entity\t%s", entityclass)
         _LOGGER.debug("api\t%s", api_client)
@@ -224,9 +236,21 @@ class AemetMasterRecord:
 
         if weather_station is not None and entityclass == "estaciones":
             self.nearest = weather_station
+        elif city is not None and entityclass == "ciudades":
+            self.nearest = city
         else:
             self.nearest = None
         self.api_client = api_client
+        self._location_tree = None
+
+        # Default method to search
+        self._nearest_location = (
+            self._nearest_location_iterate
+        )  # Compatible with RPI, slower
+        # if experimental:
+        #     self._nearest_location = (
+        #         self._nearest_location_kdtree
+        #     )  # Not tested in a RPI, faster
 
     def _write_master_data(self, force=False):
         if self.data is None:
@@ -238,52 +262,62 @@ class AemetMasterRecord:
         if elapsed < timedelta(minutes=5) or force:
             self.api_client.save_to_file(self._entityClass, self.data)
 
-    def _nearest_location(self, location: tuple):
+    # def _nearest_location_kdtree(self, location: tuple) -> tuple:
+    #     """Find nearest point in a list of points to a given location using KDTree.
+    #
+    #     This function is faster but cannot use it in a rpi environment due to limitations using scipy package.
+    #
+    #     :param location: reference location to find closest point
+    #     :return: distance and closest point to location"""
+    #
+    #     def cartesian(latitude, longitude, elevation=0):
+    #         """Convert to radians"""
+    #         latitude = latitude * (math.pi / 180)
+    #         longitude = longitude * (math.pi / 180)
+    #
+    #         R = (6378137.0 + elevation) / 1000.0  # relative to centre of the earth
+    #         X = R * math.cos(latitude) * math.cos(longitude)
+    #         Y = R * math.cos(latitude) * math.sin(longitude)
+    #         Z = R * math.sin(latitude)
+    #         return (X, Y, Z)
+    #
+    #     def find_closest(list_locations, location):
+    #
+    #         if self._location_tree is None:
+    #             places = []  # create a list of points with cartesian coordinates
+    #             for points in list_locations:
+    #                 coordinates = (
+    #                     float(points["latitud"]),
+    #                     float(points["longitud"]),
+    #                     float(points["altitud"]),
+    #                 )
+    #                 cartesian_coord = cartesian(*coordinates)
+    #                 places.append(cartesian_coord)
+    #
+    #             self._location_tree = spatial.KDTree(
+    #                 places
+    #             )  # create a KDTree with those points
+    #
+    #         cartesian_coord = cartesian(*location)
+    #         closest = self._location_tree.query([cartesian_coord], p=2)
+    #         distance = closest[0][0]
+    #         location_index = closest[1][0]
+    #         return distance, location_index
+    #
+    #     if self.data is None:
+    #         return None, None
+    #
+    #     list_locations = self.data[self._entityClass]
+    #     (distance, index) = find_closest(list_locations, location)
+    #
+    #     return distance, list_locations[index]
+
+    def _nearest_location_iterate(self, location: tuple):
         """Find nearest city or weather station given my current location
         :type location: tuple
         :param location: my current location
         :return: dictionary with information of cit or weather station
         """
-
-        # def __nearest_location(list_locations: list, location: tuple) -> tuple:
-        #     """Find nearest point in a list of points to a given location using KDTree.
-        #
-        #     This function is faster but cannot use it in a rpi environment due to limitations using scipy package.
-        #
-        #     :param list_locations: list of point
-        #     :param location: reference location to find closest point
-        #     :return: closest point to location"""
-        #     import math
-        #     from scipy import spatial
-        #
-        #     def cartesian(latitude, longitude, elevation=0):
-        #         """Convert to radians"""
-        #         latitude = latitude * (math.pi / 180)
-        #         longitude = longitude * (math.pi / 180)
-        #
-        #         R = (6378137.0 + elevation) / 1000.0  # relative to centre of the earth
-        #         X = R * math.cos(latitude) * math.cos(longitude)
-        #         Y = R * math.cos(latitude) * math.sin(longitude)
-        #         Z = R * math.sin(latitude)
-        #         return (X, Y, Z)
-        #
-        #     def find_closest(lat, lon, alt):
-        #         cartesian_coord = cartesian(lat, lon, alt)
-        #         closest = tree.query([cartesian_coord], p=2)
-        #         index = closest[1][0]
-        #         return index
-        #
-        #     places = []  # create a list of points with cartesian coordinates
-        #     for estacion in list_locations:
-        #         coordinates = (float(estacion['latitud']), float(estacion['longitud']), float(estacion['altitud']))
-        #         cartesian_coord = cartesian(*coordinates)
-        #         places.append(cartesian_coord)
-        #
-        #     tree = spatial.KDTree(places)
-        #
-        #     index = find_closest(*location)
-        #
-        #     return list_locations[index]
 
         def distance(point1: tuple, point2: tuple):
             """Calculate the distance in kilometers between two points using vincenty function
@@ -291,9 +325,7 @@ class AemetMasterRecord:
             :param point2: coordinates (latitude, longitude) of point 1
             :return: distance in kilometers between two points
             """
-            if None in point1:
-                return None
-            if None in point2:
+            if None in (point1, point2):
                 return None
             result = vincenty(point1, point2)
             if result is None:
@@ -318,12 +350,15 @@ class AemetMasterRecord:
                 if point["codigo"] == nearest_codigo:
                     nearest = point
                     break
-            return nearest
+            return nearest_distance, nearest
 
-        self.api_client.save_to_file("debug", self.data)
-        closest_location = nearest_location(self.data[self._entityClass], location)
+        if self.data is None:
+            return None, None
 
-        return closest_location
+        list_locations = self.data[self._entityClass]
+        (distance, closest_location) = nearest_location(list_locations, location)
+
+        return distance, closest_location
 
     def update_distance(self, location, force=False):
         """Get nearest place to given location."""
@@ -334,8 +369,35 @@ class AemetMasterRecord:
                 if v.get("codigo") == nearest:
                     self.nearest = v
                     break
+            if isinstance(self.nearest, str):
+                raise ValueError("Weather station or City code is not valid")
+
         if self.nearest is None or force:
-            self.nearest = self._nearest_location(location)
+            (distance, self.nearest) = self._nearest_location(location)
+
+        distance = vincenty(
+            location, (self.nearest["latitud"], self.nearest["longitud"])
+        )
+        """
+        If the distance to my location is more than 25 km, the city must not be in Spain.
+
+        On the website http://www.geomidpoint.com/random/ we can obtain up to 2000 random points 
+        in a radius of 600 km around the centre of Spain (usually Cerro de los Ángeles, Madrid).
+
+        We calculate the distance from those random points to the nearest city and on 
+        website http://www.copypastemap.com/ we can trace those points with colors depending on the distance.
+
+        All points further than 25 km from a city are outside the Spanish border."""
+
+        if distance > 25.0 and self._entityClass == "ciudades":
+            self.nearest = None
+
+        """This is not true when looking for a weather station. The farthest points of 40 km 
+        are the most likely to be outside the Spanish border. But there are places 
+        between 25 and 40 km within Spain."""
+
+        if distance > 40.0 and self._entityClass == "estaciones":
+            self.nearest = None
 
     def _clean_master_data(self, data):
         """Cleans data received from AEMET."""
@@ -396,7 +458,7 @@ class AemetMasterRecord:
 
         return raw_data
 
-    def update(self, api_client=None):
+    def update(self, api_client: AemetAPI = None):
         _LOGGER.debug("Updating AEMET Master Records.")
 
         if api_client is not None:
@@ -409,6 +471,9 @@ class AemetMasterRecord:
                 self.data = self._clean_master_data(raw_data)
             else:
                 self.data = raw_data
+            self._location_tree = (
+                None
+            )  # Remove KDTree as we have loaded a new set of data
         else:
             last_saved = datetime.strptime(self.data.get("saved"), "%Y-%m-%dT%H:%M:%S")
             elapsed = datetime.now() - last_saved
@@ -639,10 +704,14 @@ class AemetForecast:
             self.nearest = nearest
         if api_client is not None:
             self.api_client = api_client
-        if None in (self.nearest, self.api_client):
-            raise ValueError
+        # if None in (self.nearest, self.api_client):
+        #     raise ValueError
         # Update weather forecast
-        data = self._update_forecast()
+        try:
+            data = self._update_forecast()
+        except ValueError:
+            _LOGGER.info("No data retrieved")
+            return False
 
         self.data = {
             self._forecastmode: data,
@@ -751,7 +820,7 @@ class AemetWeather:
 
     def _update_currently(self):
         if self.nearest is None:
-            raise ValueError
+            raise ValueError("Nearest weather station or city not defined")
         station_id = self.nearest.get("codigo")
 
         _LOGGER.debug("Updating meteorological data from station %s", station_id)
@@ -772,7 +841,11 @@ class AemetWeather:
         if api_client is not None:
             self.api_client = api_client
         # Update current weather
-        data = self._update_currently()
+        try:
+            data = self._update_currently()
+        except ValueError:
+            _LOGGER.info("No data retrieved")
+            return False
 
         self.data = {
             "currently": data,
@@ -787,12 +860,14 @@ class AemetData:
 
     def __init__(
         self,
-        latitude,
-        longitude,
-        elevation=0,
-        api_key=None,
-        cache_dir=DEFAULT_CACHE_DIR,
-        weather_station=None,
+        latitude: float,
+        longitude: float,
+        elevation: float = 0.0,
+        api_key: str = None,
+        cache_dir: str = DEFAULT_CACHE_DIR,
+        weather_station: str = None,
+        city: str = None,
+        experimental: bool = False,
     ):
         """Initialize the data object."""
         _LOGGER.debug("Creating instance of AemetData, using parameters")
@@ -810,9 +885,14 @@ class AemetData:
         self.location = (latitude, longitude, elevation)
 
         self.weather_stations = AemetMasterRecord(
-            "estaciones", self.api_client, weather_station=weather_station
+            "estaciones",
+            self.api_client,
+            weather_station=weather_station,
+            experimental=experimental,
         )
-        self.cities = AemetMasterRecord("ciudades", self.api_client)
+        self.cities = AemetMasterRecord(
+            "ciudades", self.api_client, city=city, experimental=experimental
+        )
 
         self.currently = AemetWeather(api_client=self.api_client)
         self.hourly = AemetForecast("horaria", api_client=self.api_client)
@@ -820,16 +900,16 @@ class AemetData:
 
         self.data = None
 
+        self.__experimental = experimental
+
     def update_location(self, latitude, longitude, elevation=0):
 
-        if latitude is None:
-            raise ValueError
-        if longitude is None:
+        if None in (latitude, longitude):
             raise ValueError
         self.location = (latitude, longitude, elevation)
 
-        self.cities.update_distance(self.location)
-        self.weather_stations.update_distance(self.location)
+        self.cities.update_distance(self.location, force=True)
+        self.weather_stations.update_distance(self.location, force=True)
 
         self.currently.nearest = self.weather_stations.nearest
         self.hourly.nearest = self.cities.nearest
@@ -855,9 +935,15 @@ class AemetData:
         self.daily.update(nearest=self.cities.nearest, api_client=self.api_client)
 
         self.data = {
-            "currently": self.currently.data["currently"],
-            "hourly": self.hourly.data["horaria"],
-            "daily": self.daily.data["diaria"],
+            "currently": self.currently.data.get("currently", None)
+            if self.currently.data is not None
+            else None,
+            "hourly": self.hourly.data.get("horaria", None)
+            if self.hourly.data is not None
+            else None,
+            "daily": self.daily.data.get("diaria", None)
+            if self.daily.data is not None
+            else None,
             "saved": (datetime.now().replace(microsecond=0).isoformat()),
         }
 
