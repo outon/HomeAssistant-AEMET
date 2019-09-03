@@ -52,7 +52,7 @@ There is only one mandatory parameter `apy_key`, any other parameter is optional
 | **Longitude** | No | Home Assistant Longitude | Longitude of your location
 | **elevation** | No | 0.0 | Elevation of your location.
 | **mode** | No | daily | Type of forecast: `hourly` or `daily`
-| **cache_dir** | No | aemet | Directory where to cache some files
+| **cache_dir** | No | aemet | Directory where to cache some files. Location is relative to your **config** directory, but you can use a full qualified path. e.g.   ```cache_dir: aemet``` and ```cache_dir: /config/aemet``` are equivalent
 
 **Other config options**
 (for experimental use, can be removed in future versions)
@@ -63,4 +63,19 @@ There is only one mandatory parameter `apy_key`, any other parameter is optional
 | **city** | No | N/A | Code of city (as defined by INE on http://www.ine.es/daco/daco42/codmun/codmunmapa.htm) to retrieve data instead of looking for the nearest one
 | **experimental** | No | `False` | If `true` the search for nearest weather station or city will be done by using a KDTree (requires `scipy` package). Some changes in aemet.py file should be done to uncomment some code. 
 
+== How to obtain your API KEY
+
+You should go to: https://opendata.aemet.es
+
+On section "Obtención de API Key" you should click on "Solicitar"
+
+![https://opendata.aemet.es](https://user-images.githubusercontent.com/6525261/64166305-17466500-ce47-11e9-9830-5ba1ff05fa80.png)
+
+Once you enter your email in next screen you will receive an email from opendata_apikey@aemet.es to verify your email address and a link to request your api key.
+
+![verification_mail](https://user-images.githubusercontent.com/6525261/64166881-52956380-ce48-11e9-9b34-71ab17e04987.png)
+
+Finally after you confirm your request you will receive a second email with your API Key
+
+![confirmation_mail](https://user-images.githubusercontent.com/6525261/64166429-6391a500-ce47-11e9-97ad-79126fe3306e.png))
 
