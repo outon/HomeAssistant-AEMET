@@ -2,8 +2,6 @@
 and forecast from AEMET (Agencia Estatal de Metereologia)
 """
 
-from .exceptions import *
-
 # from scipy import spatial
 import math
 import json
@@ -195,23 +193,23 @@ class AemetAPI:
 
             if estado is None:
                 _LOGGER.error("Could not retrieve data from AEMET")
-                raise NoResponseException
+                raise
             elif estado == HTTP_UNAUTHORIZED:  # 401
                 _LOGGER.error("Unauthorized. Error %s, %s", estado, descripcion)
-                raise InvalidApiKey
+                raise ValueError("Invalid api key")
             elif estado == HTTP_NOT_FOUND:  # 404
                 _LOGGER.error("Not found. Error %s, %s", estado, descripcion)
-                raise NotFound
+                raise ConnectionError
             elif estado == HTTP_TOO_MANY_REQUESTS:  # 429
                 _LOGGER.info("Too many requests. Error %s, %s", estado, descripcion)
-                raise TooManyRequests
+                raise ConnectionRefusedError
             elif estado != HTTP_OK:
                 _LOGGER.info(
                     "Could not retrieve data from AEMET. Error %s, %s",
                     estado,
                     descripcion,
                 )
-                raise AemetException
+                raise HTTPError
 
             datos = aemet_response.get("datos")
             # metadatos = aemet_response.get('metadatos')
