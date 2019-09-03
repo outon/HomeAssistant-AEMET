@@ -63,7 +63,7 @@ There is only one mandatory parameter `apy_key`, any other parameter is optional
 | **city** | No | N/A | Code of city (as defined by INE on http://www.ine.es/daco/daco42/codmun/codmunmapa.htm) to retrieve data instead of looking for the nearest one
 | **experimental** | No | `False` | If `true` the search for nearest weather station or city will be done by using a KDTree (requires `scipy` package). Some changes in aemet.py file should be done to uncomment some code. 
 
-== How to obtain your API KEY
+## How to obtain your API KEY
 
 You should go to: https://opendata.aemet.es
 
