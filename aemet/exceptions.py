@@ -6,7 +6,7 @@ class AemetException(Exception):
 
 
 class InvalidApiKey(AemetException):
-    pass
+    raise ValueError("Invalid api key error")
 
 
 class NotFound(AemetException):
@@ -18,5 +18,5 @@ class TooManyRequests(AemetException):
 
 
 class NoResponseException(AemetException):
-    pass
+    raise ValueError("No respose received")
 

@@ -97,21 +97,26 @@ class AemetAPI:
         except OSError as err:
             raise HomeAssistantError("Can't init cache dir {}".format(err))
 
-    def aemet_load_from_file(self, api_url):
-        """Load data cached locally."""
-        file = None
-
+    def _get_url_method(self, api_url):
         base_length = len(self.API_BASE_URL)
-
         api_method = api_url[base_length:]
+        method = None
         for k, v in {
             **self.API_MASTER_RECORDS,
             **self.API_WEATHER,
             **self.API_FORECAST,
         }.items():
             if v == api_method:
-                file = k
+                method = k
                 break
+        return method
+
+    def aemet_load_from_file(self, api_url):
+        """Load data cached locally."""
+        file = None
+
+        file = self._get_url_method(api_url)
+
         if file is None:
             raise HomeAssistantError("Can't find API method for {}".format(api_url))
         filename = os.path.join(self._cache_dir, file + ".json")
@@ -158,7 +163,7 @@ class AemetAPI:
 
         return aemet_response
 
-    def api_call(self, api_url: str, direct_call: bool = False, cached: bool = False):
+    def api_call(self, api_url: str, cached: bool = False):
         """Call to AEMET OpenData API services."""
 
         _LOGGER.debug("api_url: %s", api_url)
@@ -173,6 +178,12 @@ class AemetAPI:
                 return aemet_data
         _LOGGER.debug("Loading non-cached data...")
 
+        """Exceptions to this API model:
+            when retrieving data for 'municipios' 
+            we should do a direct api call, not an staged one."""
+        method = self._get_url_method(api_url)
+        direct_call = (method in ['ciudades'])
+
         if not direct_call:
             # Get staged data
             _LOGGER.debug("Loading staged data...")
@@ -181,8 +192,6 @@ class AemetAPI:
 
             estado = aemet_response.get("estado")
             descripcion = aemet_response.get("descripcion", "No description provided")
-            datos = aemet_response.get("datos")
-            # metadatos = aemet_response.get('metadatos')
 
             if estado is None:
                 _LOGGER.error("Could not retrieve data from AEMET")
@@ -203,6 +212,10 @@ class AemetAPI:
                     descripcion,
                 )
                 raise AemetException
+
+            datos = aemet_response.get("datos")
+            # metadatos = aemet_response.get('metadatos')
+
             # Get final data
             aemet_data = self._api_request(datos, api_key=self._api_key)
         else:
@@ -452,9 +465,7 @@ class AemetMasterRecord:
             self.api_client.API_BASE_URL,
             self.api_client.API_MASTER_RECORDS.get(self._entityClass),
         )
-        # when retrieving data for 'municipios' we should do a direct api call, not an staged one.
-        direct_call = self._entityClass == "ciudades"
-        raw_data = self.api_client.api_call(endpoint_url, direct_call, cached)
+        raw_data = self.api_client.api_call(endpoint_url, cached=cached)
 
         return raw_data
 
