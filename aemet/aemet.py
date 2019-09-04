@@ -3,6 +3,7 @@ and forecast from AEMET (Agencia Estatal de Metereologia)
 """
 
 # from scipy import spatial
+import platform
 import math
 import json
 import logging
@@ -147,6 +148,15 @@ class AemetAPI:
         """
 
         _LOGGER.debug("Loading data from %s", data_url)
+
+        # Workaround for ISSUE-1
+        # SSLError(SSLError("bad handshake: Error([('SSL routines', 'tls_process_ske_dhe', '**dh key too small**')])")))
+        requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'
+        try:
+            requests.packages.urllib3.contrib.pyopenssl.DEFAULT_SSL_CIPHER_LIST += 'HIGH:!DH:!aNULL'
+        except AttributeError:
+            # no pyopenssl support used / needed / available
+            pass
 
         params = {"api_key": api_key}
         try:
