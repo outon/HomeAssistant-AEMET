@@ -3,8 +3,6 @@ and forecast from AEMET (Agencia Estatal de Metereologia)
 """
 
 # from scipy import spatial
-import platform
-import math
 import json
 import logging
 import os
@@ -28,7 +26,6 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import Throttle
 from requests.exceptions import ConnectionError, HTTPError, Timeout
 from vincenty import vincenty
-
 
 _LOGGER = logging.getLogger(__name__)
 DEFAULT_CACHE_DIR = "aemet"
@@ -112,7 +109,7 @@ class AemetAPI:
 
     def aemet_load_from_file(self, api_url):
         """Load data cached locally."""
-        file = None
+        _LOGGER.debug("Loading data from cache directory...")
 
         file = self._get_url_method(api_url)
 
@@ -139,67 +136,45 @@ class AemetAPI:
         except OSError:
             _LOGGER.info("Can't write on cache file %s", file)
 
-    @staticmethod
-    def _api_request(data_url: str, api_key: str = None):
-        """Load data from AEMET.
-        :param data_url: API call url
-        :param api_key: API private key
-        :return: json with AEMET response
-        """
-
-        _LOGGER.debug("Loading data from %s", data_url)
-
-        # Workaround for ISSUE-1
-        # SSLError(SSLError("bad handshake: Error([('SSL routines', 'tls_process_ske_dhe', '**dh key too small**')])")))
-        requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += 'HIGH:!DH:!aNULL'
-        try:
-            requests.packages.urllib3.contrib.pyopenssl.DEFAULT_SSL_CIPHER_LIST += 'HIGH:!DH:!aNULL'
-        except AttributeError:
-            # no pyopenssl support used / needed / available
-            pass
-
-        params = {"api_key": api_key}
-        try:
-            if api_key is None:
-                response = requests.get(data_url)
-            else:
-                response = requests.get(data_url, params=params)
-        except (ConnectionError, HTTPError, Timeout, ValueError) as error:
-            _LOGGER.error("Unable to retrieve data from AEMET. %s", error)
-            return []
-        aemet_response = response.json()
-
-        return aemet_response
-
     def api_call(self, api_url: str, cached: bool = False):
         """Call to AEMET OpenData API services."""
 
-        _LOGGER.debug("api_url: %s", api_url)
-        _LOGGER.debug("api_key: %s[...]%s", self._api_key[:20], self._api_key[-20:])
+        def api_request(data_url: str, api_key: str = None):
+            """Load data from AEMET.
+            :param data_url: API call url
+            :param api_key: API private key
+            :return: json with AEMET response
+            """
 
-        if cached:
-            _LOGGER.debug("Loading cache data...")
+            _LOGGER.debug("Loading data from %s", data_url)
 
-            aemet_data = self.aemet_load_from_file(api_url)
+            # Workaround for ISSUE-1
+            # SSLError(SSLError("bad handshake: Error([('SSL routines', 'tls_process_ske_dhe', '**dh key too small**')])")))
+            requests.packages.urllib3.util.ssl_.DEFAULT_CIPHERS += "HIGH:!DH:!aNULL"
+            try:
+                requests.packages.urllib3.contrib.pyopenssl.DEFAULT_SSL_CIPHER_LIST += (
+                    "HIGH:!DH:!aNULL"
+                )
+            except AttributeError:
+                # no pyopenssl support used / needed / available
+                pass
 
-            if aemet_data is not None:
-                return aemet_data
-        _LOGGER.debug("Loading non-cached data...")
+            params = {"api_key": api_key}
+            try:
+                if api_key is None:
+                    response = requests.get(data_url)
+                else:
+                    response = requests.get(data_url, params=params)
+            except (ConnectionError, HTTPError, Timeout, ValueError) as error:
+                _LOGGER.error("Unable to retrieve data from AEMET. %s", error)
+                return []
+            aemet_response = response.json()
 
-        """Exceptions to this API model:
-            when retrieving data for 'municipios' 
-            we should do a direct api call, not an staged one."""
-        method = self._get_url_method(api_url)
-        direct_call = (method in ['ciudades'])
+            return aemet_response
 
-        if not direct_call:
-            # Get staged data
-            _LOGGER.debug("Loading staged data...")
-
-            aemet_response = self._api_request(api_url, api_key=self._api_key)
-
-            estado = aemet_response.get("estado")
-            descripcion = aemet_response.get("descripcion", "No description provided")
+        def validate_response(response: dict):
+            estado = response.get("estado")
+            descripcion = response.get("descripcion", "No description provided")
 
             if estado is None:
                 _LOGGER.error("Could not retrieve data from AEMET")
@@ -221,16 +196,43 @@ class AemetAPI:
                 )
                 raise HTTPError
 
+        _LOGGER.debug("api_url: %s", api_url)
+        _LOGGER.debug("api_key: %s[...]%s", self._api_key[:20], self._api_key[-20:])
+
+        if cached:
+            aemet_data = self.aemet_load_from_file(api_url)
+
+            if aemet_data is not None:
+                return aemet_data
+
+        _LOGGER.debug("Loading non-cached data...")
+
+        """Exceptions to this API model:
+            when retrieving data for 'municipios' 
+            we should do a direct api call, not need to request intermediate url."""
+        method = self._get_url_method(api_url)
+        direct_call = method in ["ciudades"]
+
+        if not direct_call:
+            # Get intermediate URL needed to retrieve data
+            _LOGGER.debug("Loading intermediate URL...")
+
+            aemet_response = api_request(api_url, api_key=self._api_key)
+            validate_response(aemet_response)
+
             datos = aemet_response.get("datos")
             # metadatos = aemet_response.get('metadatos')
 
             # Get final data
-            aemet_data = self._api_request(datos, api_key=self._api_key)
+            aemet_data = api_request(datos, api_key=self._api_key)
         else:
             # There exists at least one API call that do not use staged data, but direct call.
             _LOGGER.debug("Loading direct data...")
 
-            aemet_data = self._api_request(api_url, api_key=self._api_key)
+            aemet_data = api_request(api_url, api_key=self._api_key)
+
+        if isinstance(aemet_data, dict):
+            validate_response(aemet_data)
         return aemet_data
 
 
