@@ -58,7 +58,8 @@ class AemetAPI:
     API_BASE_URL = "https://opendata.aemet.es/opendata/api"
     API_MASTER_RECORDS = {
         "ciudades": "/maestro/municipios",
-        "estaciones": "/observacion/convencional/todas",  # To retrieve all known station we should retrieve
+        "estaciones": "/observacion/convencional/todas",
+        # To retrieve all known station we should retrieve
         # its currently weather data as there not exists any
         # way to retrieve them without its data
     }
@@ -83,6 +84,12 @@ class AemetAPI:
         self._cache_dir = cache_dir
         self._init_cache(cache_dir)
 
+        self._api_methods = {
+            **self.API_MASTER_RECORDS,
+            **self.API_WEATHER,
+            **self.API_FORECAST,
+        }
+
     @staticmethod
     def _init_cache(cache_dir):
         """Init cache folder."""
@@ -97,15 +104,19 @@ class AemetAPI:
         base_length = len(self.API_BASE_URL)
         api_method = api_url[base_length:]
         method = None
-        for k, v in {
-            **self.API_MASTER_RECORDS,
-            **self.API_WEATHER,
-            **self.API_FORECAST,
-        }.items():
+        for k, v in self._api_methods.items():
             if v == api_method:
                 method = k
                 break
         return method
+
+    def get_url(self, method):
+        """Get the URL for a given API Method"""
+        url = "{}{}".format(
+            self.API_BASE_URL,
+            self._api_methods.get(method, None),
+        )
+        return url
 
     def aemet_load_from_file(self, api_url):
         """Load data cached locally."""
@@ -471,10 +482,7 @@ class AemetMasterRecord:
         """Get master data: List of cities or Weather stations"""
         _LOGGER.debug("Get master data for: %s ", self._entityClass)
 
-        endpoint_url = "{}{}".format(
-            self.api_client.API_BASE_URL,
-            self.api_client.API_MASTER_RECORDS.get(self._entityClass),
-        )
+        endpoint_url = self.api_client.get_url(self._entityClass)
         raw_data = self.api_client.api_call(endpoint_url, cached=cached)
 
         return raw_data
@@ -695,10 +703,7 @@ class AemetForecast:
 
     def _load_forecast_data(self, city):
         """Get station data"""
-        endpoint_url = "{}{}".format(
-            self.api_client.API_BASE_URL,
-            self.api_client.API_FORECAST[self._forecastmode].format(city),
-        )
+        endpoint_url = self.api_client.get_url(self._forecastmode).format(city)
         raw_data = self.api_client.api_call(endpoint_url)
         return raw_data
 
@@ -831,10 +836,7 @@ class AemetWeather:
     def _load_current_data(self, station_id):
         """Get station data"""
         _LOGGER.debug("Loading data from station %s", station_id)
-        endpoint_url = "{}{}".format(
-            self.api_client.API_BASE_URL,
-            self.api_client.API_WEATHER["estacion"].format(station_id),
-        )
+        endpoint_url = self.api_client.get_url("estacion").format(station_id)
         raw_data = self.api_client.api_call(endpoint_url)
 
         return raw_data
