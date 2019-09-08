@@ -100,7 +100,7 @@ class AemetAPI:
         except OSError as err:
             raise HomeAssistantError("Can't init cache dir {}".format(err))
 
-    def _get_url_method(self, api_url):
+    def _get_method(self, api_url):
         base_length = len(self.API_BASE_URL)
         api_method = api_url[base_length:]
         method = None
@@ -112,17 +112,14 @@ class AemetAPI:
 
     def get_url(self, method):
         """Get the URL for a given API Method"""
-        url = "{}{}".format(
-            self.API_BASE_URL,
-            self._api_methods.get(method, None),
-        )
+        url = "{}{}".format(self.API_BASE_URL, self._api_methods.get(method, None))
         return url
 
     def aemet_load_from_file(self, api_url):
         """Load data cached locally."""
         _LOGGER.debug("Loading data from cache directory...")
 
-        file = self._get_url_method(api_url)
+        file = self._get_method(api_url)
 
         if file is None:
             raise HomeAssistantError("Can't find API method for {}".format(api_url))
@@ -221,7 +218,7 @@ class AemetAPI:
         """Exceptions to this API model:
             when retrieving data for 'municipios' 
             we should do a direct api call, not need to request intermediate url."""
-        method = self._get_url_method(api_url)
+        method = self._get_method(api_url)
         direct_call = method in ["ciudades"]
 
         if not direct_call:
