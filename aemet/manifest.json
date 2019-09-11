@@ -4,5 +4,9 @@
   "documentation": "https://github.com/outon/HomeAssistant-AEMET",
   "dependencies": [],
   "codeowners": ["@outon"],
-  "requirements": ["vincenty"]
+  "requirements": [
+    "vincenty",
+    "jsonpath-rw",
+    "jsonpath-rw-ext"
+  ]
 }
