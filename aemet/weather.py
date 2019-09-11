@@ -186,28 +186,43 @@ class AemetWeather(WeatherEntity):
         self._aemet_forecast_current_hour = None
 
     def retrieve_forecast_subday(self, data, field, intervalo=24):
-        if intervalo == 3:
-            return None
+        if self._mode == "daily":
+            date = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+            forecast_date = datetime.strptime(
+                data.get(ATTR_FORECAST_TIME), "%Y-%m-%dT%H:%M:%S"
+            ).replace(hour=0, minute=0, second=0)
+
+            if (
+                    intervalo == 3 and date == forecast_date
+            ):  # if today ... we can get info up to 6 hours interval
+                return None
+            if (
+                    intervalo == 12 and date != forecast_date
+            ):  # if not today ... we should get info for whole day
+                return None
         else:
-            valor = self.retrieve_forecast_subday(data, field, int(intervalo / 2))
-            if valor is not None:
-                return valor
-            else:
-                hour = datetime.now().hour
+            if intervalo == 3:
+                return None
 
-                inicio = str(int(hour / intervalo) * intervalo).zfill(2)
-                fin = str(int(hour / intervalo + 1) * intervalo).zfill(2)
-                periodo = f"{inicio}-{fin}"
+        valor = self.retrieve_forecast_subday(data, field, int(intervalo / 2))
+        if valor is not None:
+            return valor
+        else:
+            hour = datetime.now().hour
 
-                campo = data.get(periodo, None)
-                if campo is None:
-                    if intervalo == 24:
-                        valor = data.get(field, None)
-                        return valor
-                    return None
-                else:
-                    valor = campo.get(field, None)
+            inicio = str(int(hour / intervalo) * intervalo).zfill(2)
+            fin = str(int(hour / intervalo + 1) * intervalo).zfill(2)
+            periodo = f"{inicio}-{fin}"
+
+            campo = data.get(periodo, None)
+            if campo is None:
+                if intervalo == 24:
+                    valor = data.get(field, None)
                     return valor
+                return None
+            else:
+                valor = campo.get(field, None)
+                return valor
 
     @property
     def state(self):
