@@ -185,6 +185,30 @@ class AemetWeather(WeatherEntity):
 
         self._aemet_forecast_current_hour = None
 
+    def retrieve_forecast_subday(self, data, field, intervalo=24):
+        if intervalo == 3:
+            return None
+        else:
+            valor = self.retrieve_forecast_subday(data, field, int(intervalo / 2))
+            if valor is not None:
+                return valor
+            else:
+                hour = datetime.now().hour
+
+                inicio = str(int(hour / intervalo) * intervalo).zfill(2)
+                fin = str(int(hour / intervalo + 1) * intervalo).zfill(2)
+                periodo = f"{inicio}-{fin}"
+
+                campo = data.get(periodo, None)
+                if campo is None:
+                    if intervalo == 24:
+                        valor = data.get(field, None)
+                        return valor
+                    return None
+                else:
+                    valor = campo.get(field, None)
+                    return valor
+
     @property
     def state(self):
         return self.condition
@@ -361,66 +385,42 @@ class AemetWeather(WeatherEntity):
             if self._aemet_data["daily"] is None:
                 return None
 
-            today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            working_data = self._aemet_data["daily"]["data"]
 
-            for entry in self._aemet_data["daily"]["data"]:
-                forecast_time = datetime.strptime(
-                    entry.get(ATTR_FORECAST_TIME), "%Y-%m-%dT%H:%M:%S"
-                )
-                if forecast_time >= today:
-                    data = {
-                        ATTR_FORECAST_TIME: entry.get(ATTR_FORECAST_TIME),
-                        ATTR_FORECAST_TEMP: entry.get(ATTR_FORECAST_TEMP),
-                        ATTR_FORECAST_TEMP_LOW: entry.get(ATTR_FORECAST_TEMP_LOW),
-                        ATTR_FORECAST_PRECIPITATION: entry.get(
-                            ATTR_FORECAST_PRECIPITATION
-                        ),
-                        ATTR_FORECAST_WIND_SPEED: entry.get(ATTR_FORECAST_WIND_SPEED),
-                        ATTR_FORECAST_WIND_BEARING: entry.get(ATTR_FORECAST_WIND_SPEED),
-                        ATTR_FORECAST_CONDITION: MAP_CONDITION.get(
-                            entry.get(ATTR_FORECAST_CONDITION)
-                        ),
-                    }
-
-                    if data[ATTR_FORECAST_CONDITION] is None:
-                        hour = datetime.now().hour
-                        inicio = int(hour / 6) * 6
-                        fin = int(hour / 6 + 1) * 6
-                        data[ATTR_FORECAST_CONDITION] = MAP_CONDITION.get(
-                            entry.get("{}-{}".format(inicio, fin)).get(
-                                ATTR_FORECAST_CONDITION
-                            )
-                        )
-                        data[ATTR_FORECAST_WIND_SPEED] = entry.get(
-                            "{}-{}".format(inicio, fin)
-                        ).get(ATTR_FORECAST_WIND_SPEED)
-                        data[ATTR_FORECAST_WIND_BEARING] = entry.get(
-                            "{}-{}".format(inicio, fin)
-                        ).get(ATTR_FORECAST_WIND_BEARING)
-
-                    fc.append(data)
         else:
             if self._aemet_data["hourly"] is None:
                 return None
 
-            now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+            date = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+            working_data = self._aemet_data["hourly"]["data"]
 
-            for entry in self._aemet_data["hourly"]["data"]:
-                forecast_time = datetime.strptime(
-                    entry.get(ATTR_FORECAST_TIME), "%Y-%m-%dT%H:%M:%S"
-                )
-                if forecast_time >= now:
-                    data = {
-                        ATTR_FORECAST_TIME: entry.get(ATTR_FORECAST_TIME),
-                        ATTR_FORECAST_TEMP: entry.get(ATTR_FORECAST_TEMP),
-                        ATTR_FORECAST_PRECIPITATION: entry.get(
-                            ATTR_FORECAST_PRECIPITATION
+        for entry in working_data:
+            forecast_time = datetime.strptime(
+                entry.get(ATTR_FORECAST_TIME), "%Y-%m-%dT%H:%M:%S"
+            )
+            if forecast_time >= date:
+                data = {
+                    ATTR_FORECAST_TIME: entry.get(ATTR_FORECAST_TIME),
+                    ATTR_FORECAST_TEMP: entry.get(ATTR_FORECAST_TEMP),
+                    ATTR_FORECAST_TEMP_LOW: entry.get(ATTR_FORECAST_TEMP_LOW),
+                    ATTR_FORECAST_PRECIPITATION: entry.get(ATTR_FORECAST_PRECIPITATION),
+                    ATTR_FORECAST_CONDITION: MAP_CONDITION.get(
+                        self.retrieve_forecast_subday(entry, ATTR_FORECAST_CONDITION),
+                        None,
+                    ),
+                    ATTR_FORECAST_WIND_SPEED: self.retrieve_forecast_subday(
+                        entry, ATTR_FORECAST_WIND_SPEED
+                    ),
+                    ATTR_FORECAST_WIND_BEARING: WIND_DIRECTIONS.get(
+                        self.retrieve_forecast_subday(
+                            entry, ATTR_FORECAST_WIND_BEARING
                         ),
-                        ATTR_FORECAST_CONDITION: MAP_CONDITION.get(
-                            entry.get(ATTR_FORECAST_CONDITION)
-                        ),
-                    }
-                    fc.append(data)
+                        None,
+                    ),
+                }
+
+                fc.append(data)
 
         return fc
 
