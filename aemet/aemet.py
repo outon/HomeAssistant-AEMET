@@ -5,74 +5,38 @@ and forecast from AEMET (Agencia Estatal de Metereologia)
 import json
 import logging
 import os
-from datetime import timedelta, datetime
+from datetime import datetime
 from operator import itemgetter
 
 import jsonpath_rw
 # from scipy import spatial
 import jsonpath_rw_ext as jp
 import requests
-from homeassistant.components.weather import (
-    ATTR_FORECAST_CONDITION,
-    ATTR_FORECAST_PRECIPITATION,
-    ATTR_FORECAST_TEMP_LOW,
-    ATTR_FORECAST_TIME,
-    ATTR_FORECAST_WIND_BEARING,
-    ATTR_FORECAST_WIND_SPEED,
-    ATTR_WEATHER_HUMIDITY,
-    ATTR_WEATHER_PRESSURE,
-    ATTR_WEATHER_TEMPERATURE,
-)
-from homeassistant.const import ATTR_LATITUDE, ATTR_LONGITUDE, ATTR_ATTRIBUTION
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import Throttle
 from requests.exceptions import ConnectionError, HTTPError, Timeout
 from vincenty import vincenty
 
+from .const import *
+
 _LOGGER = logging.getLogger(__name__)
-DEFAULT_CACHE_DIR = "aemet"
-
-# Possible HTTP responses from AEMET API
-HTTP_OK = 200
-HTTP_UNAUTHORIZED = 401
-HTTP_FORBIDDEN = 403
-HTTP_NOT_FOUND = 404
-HTTP_TOO_MANY_REQUESTS = 429
-
-# Additional attributes of the entity
-ATTR_ELEVATION = "elevation"
-
-# Data Attribution
-ATTRIBUTION = "Data provided by AEMET. www.aemet.es"
-
-# Additional Weather/Forecast attributes
-ATTR_FORECAST_SNOW = "snow"
-ATTR_WEATHER_HUMIDITY_LOW = "humidity_min"
-ATTR_WEATHER_DEW_POINT = "dew_point"
-
-# Predefined time between updates
-MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=5)
 
 
 class AemetAPI:
     """Connects to AEMET OpenData API services to retrieve weather forecast."""
 
     API_BASE_URL = "https://opendata.aemet.es/opendata/api"
-    API_MASTER_RECORDS = {
-        "ciudades": "/maestro/municipios",
-        "estaciones": "/observacion/convencional/todas",
-        # To retrieve all known station we should retrieve
-        # its currently weather data as there not exists any
-        # way to retrieve them without its data
-    }
-    API_WEATHER = {
-        "estacion": "/observacion/convencional/datos/estacion/{}",
-        "estaciones": "/observacion/convencional/todas",
-    }
-    API_FORECAST = {
-        "horaria": "/prediccion/especifica/municipio/horaria/{}",
-        "diaria": "/prediccion/especifica/municipio/diaria/{}",
-    }
+    API_MASTER_RECORDS = dict(
+        ciudades="/maestro/municipios", estaciones="/observacion/convencional/todas"
+    )
+    API_WEATHER = dict(
+        estacion="/observacion/convencional/datos/estacion/{}",
+        estaciones="/observacion/convencional/todas",
+    )
+    API_FORECAST = dict(
+        horaria="/prediccion/especifica/municipio/horaria/{}",
+        diaria="/prediccion/especifica/municipio/diaria/{}",
+    )
     _ICONS_CONDITIONS = (
         "http://www.aemet.es/imagenes_gcd/eltiempo/prediccion/comun/ayuda/{}.png"
     )
@@ -251,12 +215,12 @@ class AemetMasterRecord:
     _ENTITIES = ["ciudades", "estaciones"]
 
     def __init__(
-        self,
-        entityclass: str,
-        api_client: AemetAPI = None,
-        weather_station: str = None,
-        city: str = None,
-        experimental: bool = False,
+            self,
+            entityclass: str,
+            api_client: AemetAPI = None,
+            weather_station: str = None,
+            city: str = None,
+            experimental: bool = False,
     ):
         _LOGGER.debug("Creating instance of AemetMasterRecord, using parameters")
         _LOGGER.debug("entity\t%s", entityclass)
@@ -321,9 +285,9 @@ class AemetMasterRecord:
     #             places = []  # create a list of points with cartesian coordinates
     #             for points in list_locations:
     #                 coordinates = (
-    #                     float(points["latitud"]),
-    #                     float(points["longitud"]),
-    #                     float(points["altitud"]),
+    #                     float(points[ATTR_LATITUDE]),
+    #                     float(points[ATTR_LONGITUDE]),
+    #                     float(points[ATTR_ELEVATION]),
     #                 )
     #                 cartesian_coord = cartesian(*coordinates)
     #                 places.append(cartesian_coord)
@@ -374,14 +338,17 @@ class AemetMasterRecord:
             places = []
             nearest = None
             for point in list_locations:
-                coordinates = (float(point["latitud"]), float(point["longitud"]))
+                coordinates = (
+                    float(point[ATTR_LATITUDE]),
+                    float(point[ATTR_LONGITUDE]),
+                )
                 point_distance = distance(coordinates, location)
                 if nearest_distance is None or point_distance < nearest_distance:
                     nearest_distance = point_distance
-                    nearest_codigo = point["codigo"]
-                places.append([point["codigo"], point_distance])
+                    nearest_codigo = point[ATTR_CODE]
+                places.append([point[ATTR_CODE], point_distance])
             for point in list_locations:
-                if point["codigo"] == nearest_codigo:
+                if point[ATTR_CODE] == nearest_codigo:
                     nearest = point
                     break
             return nearest_distance, nearest
@@ -400,7 +367,7 @@ class AemetMasterRecord:
             nearest = self.nearest
             self.nearest = None
             for v in self.data.get(self._entityClass):
-                if v.get("codigo") == nearest:
+                if v.get(ATTR_CODE) == nearest:
                     self.nearest = v
                     break
             if isinstance(self.nearest, str):
@@ -410,7 +377,7 @@ class AemetMasterRecord:
             (distance, self.nearest) = self._nearest_location(location)
 
         distance = vincenty(
-            location, (self.nearest["latitud"], self.nearest["longitud"])
+            location, (self.nearest[ATTR_LATITUDE], self.nearest[ATTR_LONGITUDE])
         )
         """
         If the distance to my location is more than 25 km, the city must not be in Spain.
@@ -441,30 +408,18 @@ class AemetMasterRecord:
             if last_saved is not None:
                 """We only save curated, so there is no need to clean data again"""
                 return data
-        MAP_FIELDS = {
-            "idema": "codigo",
-            "ubi": "nombre",
-            "lat": "latitud",
-            "lon": "longitud",
-            "alt": "altitud",
-            "id": "codigo",
-            "nombre": "nombre",
-            "latitud_dec": "latitud",
-            "longitud_dec": "longitud",
-            "altitud": "altitud",
-        }
 
-        FLOAT_FIELDS = ["latitud", "longitud", "altitud"]
+        FLOAT_FIELDS = [ATTR_LATITUDE, ATTR_LONGITUDE, ATTR_ELEVATION]
 
         clean_data = []
         for entity in data:
             clean_entity = {
-                MAP_FIELDS[k]: v for k, v in entity.items() if k in MAP_FIELDS
+                FIELD_MAPPINGS[k]: v for k, v in entity.items() if k in FIELD_MAPPINGS
             }
-            clean_entity["codigo"] = (
-                clean_entity["codigo"][2:]
-                if clean_entity["codigo"].startswith("id")
-                else clean_entity["codigo"]
+            clean_entity[ATTR_CODE] = (
+                clean_entity[ATTR_CODE][2:]
+                if clean_entity[ATTR_CODE].startswith("id")
+                else clean_entity[ATTR_CODE]
             )
             clean_entity = {
                 k: (float(v) if k in FLOAT_FIELDS else v)
@@ -497,7 +452,7 @@ class AemetMasterRecord:
         if self.data is None:
             raw_data = self._get_master_data(cached=True)
             if isinstance(raw_data, list):
-                self.api_client.save_to_file("raw_{}".format(self._entityClass), raw_data)
+                # self.api_client.save_to_file("raw_{}".format(self._entityClass), raw_data)
                 self.data = self._clean_master_data(raw_data)
             else:
                 self.data = raw_data
@@ -517,53 +472,6 @@ class AemetForecast:
     """Get the latest data from AEMET."""
 
     _FORECAST_MODE = ["diaria", "horaria"]
-    # _MAP_FIELDS = {
-    #     "descripcion": "description",
-    #     "dv": ATTR_FORECAST_WIND_BEARING,
-    #     "viento_Direccion": ATTR_FORECAST_WIND_BEARING,
-    #     "vientoAndRachaMax_Direccion": ATTR_FORECAST_WIND_BEARING,
-    #     "alt": "altitude",
-    #     "idema": "weather_station",
-    #     "fint": ATTR_FORECAST_TIME,
-    #     "humedadRelativa_Maxima": ATTR_WEATHER_HUMIDITY,
-    #     "humedadRelativa_Minima": "humidity min",
-    #     "hr": ATTR_WEATHER_HUMIDITY,
-    #     "humedadRelativa": ATTR_WEATHER_HUMIDITY,
-    #     "estadoCielo": ATTR_FORECAST_CONDITION,
-    #     "uvMax": "UV index",
-    #     "lat": ATTR_LATITUDE,
-    #     "lon": ATTR_LONGITUDE,
-    #     "nieve": ATTR_FORECAST_SNOW,
-    #     "ubi": "location",
-    #     "ocaso": "sunset",
-    #     "orto": "sunrise",
-    #     "prec": ATTR_FORECAST_PRECIPITATION,
-    #     "precipitacion": ATTR_FORECAST_PRECIPITATION,
-    #     "pres": ATTR_WEATHER_PRESSURE,
-    #     "probPrecipitacion": "precipitation_probability",
-    #     "tpr": ATTR_WEATHER_DEW_POINT,
-    #     "sensTermica_Maxima": "sensacion termica maxima",
-    #     "sensTermica_Minima": "sensacion termica minima",
-    #     "sensTermica": "sensacion termica",
-    #     "temperatura_Maxima": ATTR_WEATHER_TEMPERATURE,
-    #     "temperatura_Minima": ATTR_FORECAST_TEMP_LOW,
-    #     "ta": ATTR_WEATHER_TEMPERATURE,
-    #     "temperatura": ATTR_WEATHER_TEMPERATURE,
-    #     "value": "valor",
-    #     "vv": ATTR_FORECAST_WIND_SPEED,
-    #     "viento_Velocidad": ATTR_FORECAST_WIND_SPEED,
-    #     "vientoAndRachaMax_Velocidad": ATTR_FORECAST_WIND_SPEED,
-    #     "vis": "visibility",
-    #     "periodo": "periodo",
-    # }
-
-    _FLOAT_SENSORS = (
-        ATTR_WEATHER_HUMIDITY,
-        ATTR_FORECAST_SNOW,
-        ATTR_FORECAST_PRECIPITATION,
-        "sensacion termica",
-        ATTR_WEATHER_TEMPERATURE,
-    )
 
     def __init__(self, forecastmode, city=None, api_client=None):
         """Initialize the data object."""
@@ -597,35 +505,21 @@ class AemetForecast:
                     yield str(match.path)
 
         def clean_daily(forecast):
-            sensors = {
-                # SENSOR: [jsonpath, field]
-                "precipitation probability": ["probPrecipitacion[*]", "value"],
-                "snow level": ["cotaNieveProv.[*]", "value"],
-                "description": ["estadoCielo[*]", "descripcion"],
-                ATTR_FORECAST_CONDITION: ["estadoCielo[*]", "value"],
-                ATTR_FORECAST_WIND_BEARING: ["viento[*]", "direccion"],
-                ATTR_FORECAST_WIND_SPEED: ["viento[*]", "velocidad"],
-                "maximum gust": ["rachaMax[*]", "value"],
-                ATTR_WEATHER_TEMPERATURE: ["temperatura", "maxima"],
-                ATTR_FORECAST_TEMP_LOW: ["temperatura", "minima"],
-                "thermal sensation maximum": ["sensTermica", "maxima"],
-                "thermal sensation minimum": ["sensTermica", "minima"],
-                ATTR_WEATHER_HUMIDITY: ["humedadRelativa", "maxima"],
-                "humidity min": ["humedadRelativa", "minima"],
-                "UV index": ["uvMax", ""],
-            }
-            parser = jp.parse('[*].fecha')
-            clean_data = [{'datetime': match.value + "T00:00:00"} for match in parser.find(forecast)]
+            parser = jp.parse("[*].fecha")
+            clean_data = [
+                {ATTR_FORECAST_TIME: match.value + "T00:00:00"}
+                for match in parser.find(forecast)
+            ]
 
-            path = '[*].{}'
-            for sensor, [jpath, field] in sensors.items():
+            path = "[*].{}"
+            for sensor, [jpath, field] in DAILY_SENSORS_CONVERT.items():
                 parser = jp.parse(path.format(jpath))
                 for match in parser.find(forecast):
                     value = match.value
                     [value_path, *_] = [_ for _ in get_path(match)]
 
                     if isinstance(value, dict):
-                        periodo = value.get('periodo', None)
+                        periodo = value.get("periodo", None)
                         if periodo:
                             if periodo not in clean_data[value_path].keys():
                                 clean_data[value_path][periodo] = {}
@@ -637,26 +531,14 @@ class AemetForecast:
             return clean_data
 
         def clean_hourly(forecast):
-            sensors = {
-                ATTR_FORECAST_CONDITION: ["estadoCielo[*]", "value"],
-                "description": ["estadoCielo[*]", "descripcion"],
-                ATTR_FORECAST_PRECIPITATION: ["precipitacion[*]", "value"],
-                ATTR_FORECAST_SNOW: ["nieve[*]", "value"],
-                ATTR_WEATHER_TEMPERATURE: ["temperatura[*]", "value"],
-                "sensacion termica": ["sensTermica[*]", "value"],
-                ATTR_WEATHER_HUMIDITY: ["humedadRelativa[*]", "value"],
-                ATTR_FORECAST_WIND_BEARING: ["vientoAndRachaMax[*]", "direccion"],
-                ATTR_FORECAST_WIND_SPEED: ["vientoAndRachaMax[*]", "velocidad"],
-
-            }
-            parser = jp.parse('[*].fecha')
+            parser = jp.parse("[*].fecha")
             clean_data = {}
             for match in parser.find(forecast):
                 [value_path, *_] = [_ for _ in get_path(match)]
                 clean_data[value_path] = match.value
 
-            path = '[*].{}'
-            for sensor, [jpath, field] in sensors.items():
+            path = "[*].{}"
+            for sensor, [jpath, field] in HOURLY_SENSORS_CONVERT.items():
                 parser = jp.parse(path.format(jpath))
                 for match in parser.find(forecast):
                     value = match.value
@@ -666,15 +548,18 @@ class AemetForecast:
                     periodo = f"{fecha}T{value['periodo']}:00:00"
 
                     if periodo not in clean_data.keys():
-                        clean_data[periodo] = {"datetime": periodo}
+                        clean_data[periodo] = {ATTR_FORECAST_TIME: periodo}
 
                     if value.get(field, None) is not None:
-                        clean_data[periodo][sensor] = float(value[field]) if sensor in AemetForecast._FLOAT_SENSORS else \
-                        value[field]
-            valores = [valor for valor in clean_data.values() if not isinstance(valor, str)]
+                        clean_data[periodo][sensor] = value[field]
+            valores = [
+                valor for valor in clean_data.values() if not isinstance(valor, str)
+            ]
             for valor in valores:
                 valor[ATTR_FORECAST_WIND_BEARING] = valor[ATTR_FORECAST_WIND_BEARING][0]
-                valor[ATTR_FORECAST_WIND_SPEED] = float(valor[ATTR_FORECAST_WIND_SPEED][0])
+                valor[ATTR_FORECAST_WIND_SPEED] = float(
+                    valor[ATTR_FORECAST_WIND_SPEED][0]
+                )
             return valores
 
         version = str(raw_data[0]["version"])
@@ -701,131 +586,6 @@ class AemetForecast:
         final_data = {"information": header, "data": flatten_data}
         return final_data
 
-    # def _refactor_forecast(self, raw_data):
-    #     """Cleans data received from AEMET related with Weather Forecast."""
-    #
-    #     def _periodo(variable, fecha):
-    #         if "periodo" not in variable:
-    #             intervalo = "{}T00:00:00".format(fecha)
-    #         else:
-    #             ini_periodo = variable["periodo"][:2]
-    #             fin_periodo = variable["periodo"][-2:]
-    #             if ini_periodo == fin_periodo:
-    #                 intervalo = "{}T{}:00:00".format(fecha, ini_periodo)
-    #             elif ini_periodo == "00" and fin_periodo == "24":
-    #                 intervalo = "{}T00:00:00".format(fecha)
-    #             else:
-    #                 intervalo = "{}T{}:00:00 & {}".format(
-    #                     fecha, ini_periodo, fin_periodo
-    #                 )
-    #         return intervalo
-    #
-    #     def inner_transform(data, sensor, fields, append=False, replace=False):
-    #         interval = _periodo(data, fecha)
-    #         if interval not in transformed_data:
-    #             transformed_data[interval] = {}
-    #         for field in fields:
-    #             name = field if replace else sensor
-    #             name = "{}_{}".format(name, field.capitalize()) if append else name
-    #
-    #             name = self._MAP_FIELDS.get(name)
-    #             if name is None:
-    #                 return
-    #             resultado = data.get(field)
-    #             if resultado is None:
-    #                 pass
-    #             elif isinstance(resultado, list):
-    #                 if resultado[0] != "":
-    #                     transformed_data[interval][name] = resultado[0]
-    #             else:
-    #                 if resultado != "":
-    #                     transformed_data[interval][name] = resultado
-    #
-    #     def transform(data, sensors, fields, append=False, replace=False):
-    #         for sensor in sensors:
-    #             sensor_data = data.get(sensor)
-    #             if sensor_data is None:
-    #                 continue
-    #             if isinstance(sensor_data, list):
-    #                 for lista_datos in sensor_data:
-    #                     inner_transform(lista_datos, sensor, fields, append, replace)
-    #             else:
-    #                 lista_datos = sensor_data
-    #                 inner_transform(lista_datos, sensor, fields, append, replace)
-    #
-    #     version = str(raw_data[0]["version"])
-    #     if version != "1.0":
-    #         _LOGGER.info("Version %s of AEMET schema is not supported", version)
-    #         return None
-    #     copyright = raw_data[0]["origen"]
-    #     header = {
-    #         "city": raw_data[0]["nombre"],
-    #         "province": raw_data[0]["provincia"],
-    #         "processing date": raw_data[0]["elaborado"],
-    #         ATTR_ATTRIBUTION: ATTRIBUTION,
-    #         "API version": version,
-    #         "copyrigth": copyright,
-    #     }
-    #
-    #     transformed_data = {}
-    #     if self._forecastmode == "diaria":
-    #         #    list of sensor,      list of field,     append, replace
-    #         schema_definition = [
-    #             (["estadoCielo"], ["value"], False, False),
-    #             (["estadoCielo"], ["descripcion"], False, True),
-    #             (["temperatura"], ["maxima"], False, False),
-    #             (["temperatura"], ["minima"], True, False),
-    #             (["humedadRelativa"], ["maxima"], False, False),
-    #             (["humedadRelativa"], ["minima"], True, False),
-    #             (["viento"], ["direccion"], True, False),
-    #             (["viento"], ["velocidad"], True, False),
-    #         ]
-    #     else:
-    #         #    list of sensor,      list of field,    append, replace
-    #         schema_definition = [
-    #             (["estadoCielo"], ["value"], False, False),
-    #             (["estadoCielo"], ["descripcion"], False, True),
-    #             (["temperatura"], ["value"], False, False),
-    #             (["precipitacion"], ["value"], False, False),
-    #             (["nieve"], ["value"], False, False),
-    #             (["sensTermica"], ["value"], False, False),
-    #             (["humedadRelativa"], ["value"], False, False),
-    #             (["vientoAndRachaMax"], ["direccion"], True, False),
-    #             (["vientoAndRachaMax"], ["velocidad"], True, False),
-    #         ]
-    #
-    #     # Loop though all forecast info to extract date and flatten forecast
-    #     #
-    #     for forecast in raw_data[0]["prediccion"]["dia"]:
-    #         fecha = forecast.get("fecha")
-    #         for schema in schema_definition:
-    #             transform(forecast, *schema)
-    #     # Moves all dates which are an interval to its initial hour
-    #     for key, value in transformed_data.items():
-    #         if len(key) > 19:
-    #             fecha = "{}T00:00:00".format(key[:10])
-    #             horas = "{}-{}".format(key[11:13], key[-2:])
-    #             transformed_data[fecha][horas] = value
-    #     # Insert key of dict as an attribute
-    #     for key, value in transformed_data.items():
-    #         if len(key) == 19:
-    #             value[ATTR_FORECAST_TIME] = key
-    #     # Convert all float sensors to float value
-    #     for value in transformed_data.values():
-    #         for sensor in self._FLOAT_SENSORS:
-    #             valor = value.get(sensor)
-    #             if valor is not None:
-    #                 try:
-    #                     value[sensor] = float(valor)
-    #                 except:
-    #                     continue
-    #     # Keep only data with specific key length, transform it to a list and sort it.
-    #     sorted_data = [v for k, v in transformed_data.items() if len(k) == 19]
-    #     sorted_data = sorted(sorted_data, key=itemgetter(ATTR_FORECAST_TIME))
-    #
-    #     final_data = {"information": header, "data": sorted_data}
-    #     return final_data
-
     def _load_forecast_data(self, city):
         """Get station data"""
         endpoint_url = self.api_client.get_url(self._forecastmode).format(city)
@@ -835,12 +595,13 @@ class AemetForecast:
     def _update_forecast(self):
         if self.nearest is None:
             raise ValueError
-        codigo = self.nearest.get("codigo")
-        city = self.nearest.get("nombre")
+        codigo = self.nearest.get(ATTR_CODE)
+        city = self.nearest.get(ATTR_LOCATION)
 
         _LOGGER.debug("Updating weather forecast for city %s", city)
 
         raw_data = self._load_forecast_data(codigo)
+        # self.api_client.save_to_file("raw_{}".format(codigo), raw_data)
         clean_data = None
 
         if raw_data is None:
@@ -870,51 +631,11 @@ class AemetForecast:
             "saved": (datetime.now().replace(microsecond=0).isoformat()),
         }
 
-        self.api_client.save_to_file(self._forecastmode, self.data)
+        # self.api_client.save_to_file(self._forecastmode, self.data)
 
 
 class AemetWeather:
     """Get the latest data from AEMET."""
-
-    _MAP_FIELDS = {
-        "descripcion": "description",
-        "dv": ATTR_FORECAST_WIND_BEARING,
-        "viento_Direccion": ATTR_FORECAST_WIND_BEARING,
-        "vientoAndRachaMax_Direccion": ATTR_FORECAST_WIND_BEARING,
-        "alt": "altitude",
-        "idema": "weather_station",
-        "fint": ATTR_FORECAST_TIME,
-        "humedadRelativa_Maxima": ATTR_WEATHER_HUMIDITY,
-        "humedadRelativa_Minima": "humidity min",
-        "hr": ATTR_WEATHER_HUMIDITY,
-        "humedadRelativa": ATTR_WEATHER_HUMIDITY,
-        "estadoCielo": ATTR_FORECAST_CONDITION,
-        "uvMax": "UV index",
-        "lat": ATTR_LATITUDE,
-        "lon": ATTR_LONGITUDE,
-        "nieve": ATTR_FORECAST_SNOW,
-        "ubi": "location",
-        "ocaso": "sunset",
-        "orto": "sunrise",
-        "prec": ATTR_FORECAST_PRECIPITATION,
-        "precipitacion": ATTR_FORECAST_PRECIPITATION,
-        "pres": ATTR_WEATHER_PRESSURE,
-        "probPrecipitacion": "precipitation_probability",
-        "tpr": ATTR_WEATHER_DEW_POINT,
-        "sensTermica_Maxima": "sensacion termica maxima",
-        "sensTermica_Minima": "sensacion termica minima",
-        "sensTermica": "sensacion termica",
-        "temperatura_Maxima": ATTR_WEATHER_TEMPERATURE,
-        "temperatura_Minima": ATTR_FORECAST_TEMP_LOW,
-        "ta": ATTR_WEATHER_TEMPERATURE,
-        "temperatura": ATTR_WEATHER_TEMPERATURE,
-        "value": "valor",
-        "vv": ATTR_FORECAST_WIND_SPEED,
-        "viento_Velocidad": ATTR_FORECAST_WIND_SPEED,
-        "vientoAndRachaMax_Velocidad": ATTR_FORECAST_WIND_SPEED,
-        "vis": "visibility",
-        "periodo": "periodo",
-    }
 
     def __init__(self, station=None, api_client=None):
         """Initialize the data object."""
@@ -927,11 +648,11 @@ class AemetWeather:
         self.api_client = api_client
 
     def _remap_keys(self, data):
-        """Remap AEMET field names to HA field names. Those fields not in MAP_FIELDS will be removed."""
+        """Remap AEMET field names to HA field names. Those fields not in FIELD_MAPPING will be removed."""
         translated = {}
         for key, value in data.items():
-            if key in self._MAP_FIELDS:
-                mapped_key = self._MAP_FIELDS[key]
+            if key in FIELD_MAPPINGS:
+                mapped_key = FIELD_MAPPINGS[key]
                 translated[mapped_key] = value
         return translated
 
@@ -941,7 +662,13 @@ class AemetWeather:
         sorted_data = sorted(raw_data, key=itemgetter("fint"))
         remapped_data = self._remap_keys(sorted_data[-1])
 
-        delete = ("location", "weather_station", "latitude", "longitude", "altitude")
+        delete = (
+            ATTR_LOCATION,
+            ATTR_CODE,
+            ATTR_LATITUDE,
+            ATTR_LONGITUDE,
+            ATTR_ELEVATION,
+        )
 
         # In station_info we store data that is removed from weather data
         station_info = {info: remapped_data[info] for info in delete}
@@ -962,7 +689,7 @@ class AemetWeather:
     def _update_currently(self):
         if self.nearest is None:
             raise ValueError("Nearest weather station or city not defined")
-        station_id = self.nearest.get("codigo")
+        station_id = self.nearest.get(ATTR_CODE)
 
         _LOGGER.debug("Updating meteorological data from station %s", station_id)
 
@@ -972,6 +699,7 @@ class AemetWeather:
         if raw_data is None:
             _LOGGER.info("No meteorological data received from AEMET")
         else:
+            # self.api_client.save_to_file("raw_currently", raw_data)
             clean_data = self._clean_currently_data(raw_data)
         return clean_data
 
@@ -993,22 +721,22 @@ class AemetWeather:
             "saved": (datetime.now().replace(microsecond=0).isoformat()),
         }
 
-        self.api_client.save_to_file("currently", self.data)
+        # self.api_client.save_to_file("currently", self.data)
 
 
 class AemetData:
     """Get the latest data from AEMET."""
 
     def __init__(
-        self,
-        latitude: float,
-        longitude: float,
-        elevation: float = 0.0,
-        api_key: str = None,
-        cache_dir: str = DEFAULT_CACHE_DIR,
-        weather_station: str = None,
-        city: str = None,
-        experimental: bool = False,
+            self,
+            latitude: float,
+            longitude: float,
+            elevation: float = 0.0,
+            api_key: str = None,
+            cache_dir: str = DEFAULT_CACHE_DIR,
+            weather_station: str = None,
+            city: str = None,
+            experimental: bool = False,
     ):
         """Initialize the data object."""
         _LOGGER.debug("Creating instance of AemetData, using parameters")
@@ -1088,4 +816,4 @@ class AemetData:
             "saved": (datetime.now().replace(microsecond=0).isoformat()),
         }
 
-        self.api_client.save_to_file("data", self.data)
+        # self.api_client.save_to_file("data", self.data)

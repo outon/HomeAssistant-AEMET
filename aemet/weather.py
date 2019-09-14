@@ -1,30 +1,12 @@
 """AEMET: Custom Weather Component for AEMET (Agencia Estatal de Metereologia)"""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-from homeassistant.components.weather import (
-    ATTR_FORECAST,
-    ATTR_FORECAST_CONDITION,
-    ATTR_FORECAST_PRECIPITATION,
-    ATTR_FORECAST_TEMP,
-    ATTR_FORECAST_TEMP_LOW,
-    ATTR_FORECAST_TIME,
-    ATTR_FORECAST_WIND_BEARING,
-    ATTR_FORECAST_WIND_SPEED,
-    ATTR_WEATHER_ATTRIBUTION,
-    ATTR_WEATHER_HUMIDITY,
-    ATTR_WEATHER_OZONE,
-    ATTR_WEATHER_PRESSURE,
-    ATTR_WEATHER_TEMPERATURE,
-    ATTR_WEATHER_VISIBILITY,
-    ATTR_WEATHER_WIND_BEARING,
-    ATTR_WEATHER_WIND_SPEED,
-    PLATFORM_SCHEMA,
-    WeatherEntity,
-)
+from homeassistant.components.weather import PLATFORM_SCHEMA
+from homeassistant.components.weather import WeatherEntity
 from homeassistant.const import (
     CONF_API_KEY,
     CONF_LATITUDE,
@@ -32,85 +14,17 @@ from homeassistant.const import (
     CONF_ELEVATION,
     CONF_MODE,
     CONF_NAME,
-    TEMP_CELSIUS,
-    PRECISION_TENTHS,
 )
+from homeassistant.const import PRECISION_TENTHS
 from homeassistant.util import Throttle
 
 from .aemet import AemetData
-
-MAP_CONDITION = {
-    "11": "sunny",
-    "11n": "clear-night",
-    "12": "partlycloudy",
-    "12n": "partlycloudy",
-    "13": "partlycloudy",
-    "13n": "partlycloudy",
-    "14": "cloudy",
-    "14n": "cloudy",
-    "15": "cloudy",
-    "16": "cloudy",
-    "17": "Nubes altas",
-    "17n": "Nubes altas noche",
-    "23": "rainy",
-    "23n": "rainy",
-    "24": "rainy",
-    "24n": "rainy",
-    "25": "rainy",
-    "26": "rainy",
-    "33": "snowy",
-    "33n": "snowy",
-    "34": "snowy",
-    "34n": "snowy",
-    "35": "snowy",
-    "36": "snowy",
-    "36n": "snowy",
-    "43": "partlycloudy",
-    "43n": "partlycloudy",
-    "44": "cloudy",
-    "45": "cloudy",
-    "46": "cloudy",
-    "51": "lightning",
-    "52": "lightning",
-    "53": "lightning",
-    "54": "lightning",
-    "61": "lightning-rainy",
-    "62": "lightning-rainy",
-    "63": "lightning-rainy",
-    "64": "lightning-rainy",
-    "71": "partlycloudy",
-    "72": "snowy",
-    "73": "snowy",
-    "74": "snowy",
-}
-WIND_DIRECTIONS = {
-    "C": None,  # C = Calm
-    "N": "N",
-    "NNE": "NNE",
-    "NE": "NE",
-    "ENE": "ENE",
-    "E": "E",
-    "ESE": "ESE",
-    "SE": "SE",
-    "SSE": "SSE",
-    "S": "S",
-    "SSO": "SSW",
-    "SO": "SW",
-    "OSO": "WSW",
-    "O": "W",
-    "ONO": "WNW",
-    "NO": "NW",
-    "NNO": "NNW",
-}
+from .const import *
 
 DEFAULT_NAME = "AEMET"
 _LOGGER = logging.getLogger(__name__)
-DEFAULT_CACHE_DIR = "aemet"
 
-ATTRIBUTION = "Data provided by AEMET (www.aemet.es)"
-ATTR_WEATHER_DESCRIPTION = "description"
 FORECAST_MODE = ["hourly", "daily"]
-
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -126,8 +40,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional("experimental", default=False): cv.boolean,
     }
 )
-
-MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=5)
 
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
