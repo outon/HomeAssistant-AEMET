@@ -194,6 +194,7 @@ MAP_CONDITION = {
     "52n": "Cloudy with storm",
     "53": "lightning",  # "Very cloudy with storm",
     "54": "lightning",  # "Covered with storm",
+    "54n": "lightning",  # "Covered with storm",
     "61": "lightning-rainy",  # "Cloudy intervals with storm and scarce rain",
     "61n": "Cloudy intervals with storm and scarce rain",
     "62": "lightning-rainy",  # "Cloudy with storm and scarce rain",
