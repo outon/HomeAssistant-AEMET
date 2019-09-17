@@ -295,7 +295,7 @@ class AemetWeather(WeatherEntity):
         if self._aemet_data["currently"] is None:
             return None
 
-        condition = self._aemet_data["currently"].get("condition")
+        condition = self._aemet_data["currently"]["data"].get("condition")
         if condition is None:
             condition = self._aemet_forecast_current_hour.get(
                 "condition", "desconocido"
