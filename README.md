@@ -79,3 +79,37 @@ Finally after you confirm your request you will receive a second email with your
 
 ![confirmation_mail](https://user-images.githubusercontent.com/6525261/64166429-6391a500-ce47-11e9-97ad-79126fe3306e.png))
 
+## How data is processed
+
+AEMET produces 3 types of data...
+
+* Conventional observation with data from the last 24 hours
+* Hourly forecast with the forecast of the next 72 hours
+* Daily forecast up to 5 days.
+
+All information is collected and preprocessed to match the way " Home Assistant " can work with it.
+
+### Currently Weather
+
+The "current" information is obtained from weather stations which are updated hourly, but depending on the station there will be some information or other available.
+
+For example:
+* Station 1111X (Santander CMT) has 9 sensors: "precipitation", "wind_speed", "wind_bearing", "pressure", "humidity", "templow", "temperature", "dew_point" and "visibility".
+
+* Station 3194U (Madrid - C. Universitaria) has 6 sensors: "precipitation", "wind_speed", "wind_bearing", "humidity", "templow", "temperature".
+
+* Station 3194Y (Pozuelo de Alarcon, Madrid) has 4 sensors: "precipitation", "humidity", "templow", "temperature".
+
+If some information is not available but it is available in forescast data, then it is obtained from the hourly forecast information for the current time.
+
+### Weather Forecast
+
+Weather Forecast is obtained for Locations not directly from Weather Station.
+
+AEMET produces forecast data for:
+
+* Days D and D+1:  Some sensors get information for 6 hours interval, 12 hours interval and whole day.
+* Days D+2 and D+3:  Some sensors get information for 12 hours interval and whole day.
+* Day D+4:  Sensos get information for whole day.
+
+We present information on daily basis except for current day that will present the information from 6 hour interval.
