@@ -77,7 +77,7 @@ PRESSURE_MBAR = "mbar"
 PRESSURE_INHG = "inHg"
 PRESSURE_PSI = "psi"
 
-# Location Attributes 
+# Location Attributes
 ATTR_LOCATION = "location"
 ATTR_LATITUDE = "latitude"
 ATTR_LONGITUDE = "longitude"
@@ -157,61 +157,59 @@ FLOAT_SENSORS = (
     ATTR_FORECAST_TEMP,
 )
 MAP_CONDITION = {
-    "11" : "sunny",         # Despejado              Clear
-    "11n": "clear-night",   # Despejado Noche        Clear Night
-    "12" : "partlycloudy",  # Poco nuboso            Little cloudy
+    "11":  "sunny",                # Despejado
+    "11n": "clear-night",          # Despejado Noche
+    "12":  "partlycloudy",         # Poco nuboso
     "12n": "partlycloudy",
-    "13" : "partlycloudy",  # Intervalos nubosos     Cloud intervals
+    "13":  "partlycloudy",         # Intervalos nubosos
     "13n": "partlycloudy",
-    "14" : "cloudy",        # Nuboso                 Cloudy
+    "14":  "cloudy",               # Nuboso
     "14n": "cloudy",
-    "15" : "cloudy",        # Muy nuboso             Very cloudy
-    "16" : "cloudy",        # Cubierto               Covered
-    "17" : "cloudy",        # Nubes altas            High clouds
+    "15":  "cloudy",               # Muy nuboso
+    "16":  "cloudy",               # Cubierto
+    "17":  "cloudy",               # Nubes altas
     "17n": "cloudy",
-    "23" : "rainy",         # Intervalos nubosos con lluvia        Cloudy intervals with rain
+    "23":  "rainy",                # Intervalos nubosos con lluvia
     "23n": "rainy",
-    "24" : "rainy",         # Nuboso con lluvia         Cloudy with rain
+    "24":  "rainy",                # Nuboso con lluvia
     "24n": "rainy",
-    "25" : "rainy",         # Muy nuboso con lluvia     Very cloudy with rain
-    "26" : "rainy",         # Cubierto con lluvia       Covered with rain
-    "27" : "pouring",       # Chubascos                 Showers
-    "33" : "snowy",         # Intervalos nubosos con nieve       Cloud intervals with snow
+    "25":  "rainy",                # Muy nuboso con lluvia
+    "26":  "rainy",                # Cubierto con lluvia
+    "27":  "pouring",              # Chubascos
+    "27n": "pouring",
+    "33":  "snowy",                # Intervalos nubosos con nieve
     "33n": "snowy",
-    "34" : "snowy",         # Nuboso con nieve          Cloudy with snow
+    "34":  "snowy",                # Nuboso con nieve
     "34n": "snowy",
-    "35" : "snowy",         # Muy nuboso con nieve      Very cloudy with snow
-    "36" : "snowy",         # Cubierto con nieve        Covered with snow
-    "36n": "snowy",
-    "43" : "partlycloudy",  # Intervalos nubosos con lluvia escasa      Cloudy intervals with low rainfall
+    "35":  "snowy",                # Muy nuboso con nieve
+    "36":  "snowy",                # Cubierto con nieve
+    "43":  "partlycloudy",         # Intervalos nubosos con lluvia escasa
     "43n": "partlycloudy",
-    "44" : "partlycloudy",  # Nuboso con lluvia escasa                  Cloudy with little rain
+    "44":  "partlycloudy",         # Nuboso con lluvia escasa
     "44n": "partlycloudy",
-    "45" : "cloudy",        # Muy nuboso con lluvia escasa                             Very cloudy with little rain
-    "46" : "cloudy",     # Cubierto con lluvia escasa                               Covered with scarce rain
-    "51" : "lightning",  # Intervalos nubosos con tormenta                          Cloudy storm intervals
+    "45":  "cloudy",               # Muy nuboso con lluvia escasa
+    "46":  "cloudy",               # Cubierto con lluvia escasa
+    "51":  "lightning",            # Intervalos nubosos con tormenta
     "51n": "lightning",
-    "52" : "lightning",  # Nuboso con tormenta                                      Cloudy with storm
+    "52":  "lightning",            # Nuboso con tormenta
     "52n": "lightning",
-    "53" : "lightning",  # Muy nuboso con tormenta                                  Very cloudy with storm
-    "54" : "lightning",  # Cubierto con tormenta                                    Covered with storm
-    "54n": "lightning",
-    "61" : "lightning-rainy",    # Intervalos nubosos con tormenta y lluvia escasa      Cloud Intervals with Storm and Scarce Rain
+    "53":  "lightning",            # Muy nuboso con tormenta
+    "54":  "lightning",            # Cubierto con tormenta
+    "61":  "lightning-rainy",      # Intervalos nubosos con tormenta y lluvia escasa
     "61n": "lightning-rainy",
-    "62" : "lightning-rainy",    # Nuboso con tormenta y lluvia escasa                      Cloudy with storm and scarce rain
+    "62":  "lightning-rainy",      # Nuboso con tormenta y lluvia escasa
     "62n": "lightning-rainy",
-    "63" : "lightning-rainy",    # Muy nuboso con tormenta y lluvia escasa                  Very cloudy with storm and scarce rain
-    "64" : "lightning-rainy",    # Cubierto con tormenta y lluvia escasa                    Covered with storm and scarce rain
-    "71" : "partlycloudy",  # Intervalos nubosos con nieve escasa                      Cloudy Intervals with Scarce Snow
+    "63":  "lightning-rainy",      # Muy nuboso con tormenta y lluvia escasa
+    "64":  "lightning-rainy",      # Cubierto con tormenta y lluvia escasa
+    "71":  "partlycloudy",         # Intervalos nubosos con nieve escasa
     "71n": "partlycloudy",
-    "72" : "snowy",  # Nuboso con nieve escasa                                  Cloudy with scarce snow
+    "72":  "snowy",                # Nuboso con nieve escasa
     "72n": "snowy",
-    "73" : "snowy",  # Muy nuboso con nieve escasa                              Very cloudy with little snow
-    "74" : "snowy",  # Cubierto con nieve escasa                                Covered with scarce snow
-    "81" : "fog",  # Niebla                                                   Fog
-    "82" : "mist",  # Bruma - Neblina                                          Mist
-    "83" : "calima",  # Calima                                                   Calima (Haze?)
-    "84" : "hail",  # Granizo                                                  Hail
+    "73":  "snowy",                # Muy nuboso con nieve escasa
+    "74":  "snowy",                # Cubierto con nieve escasa
+    "81":  "fog",                  # Niebla
+    "82":  "mist",                 # Bruma - Neblina
+    "83":  "calima",               # Calima
 }
 
 ICONS_URL = "www.aemet.es/imagenes_gcd/_iconos_municipios/{}.png"
