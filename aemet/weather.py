@@ -334,7 +334,7 @@ class AemetWeather(WeatherEntity):
                     ATTR_FORECAST_PRECIPITATION: entry.get(ATTR_FORECAST_PRECIPITATION),
                     ATTR_FORECAST_CONDITION: MAP_CONDITION.get(
                         self.retrieve_forecast_subday(entry, ATTR_FORECAST_CONDITION),
-                        entry.get(ATTR_WEATHER_DESCRIPTION),
+                        +entry.get(ATTR_WEATHER_DESCRIPTION, ''),
                     ),
                     ATTR_FORECAST_WIND_SPEED: self.retrieve_forecast_subday(
                         entry, ATTR_FORECAST_WIND_SPEED
