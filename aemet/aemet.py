@@ -507,7 +507,7 @@ class AemetForecast:
         def clean_daily(forecast):
             parser = jp.parse("[*].fecha")
             clean_data = [
-                {ATTR_FORECAST_TIME: match.value + "T00:00:00"}
+                {ATTR_FORECAST_TIME: match.value}
                 for match in parser.find(forecast)
             ]
 
@@ -545,7 +545,7 @@ class AemetForecast:
                     [value_path, *_] = [_ for _ in get_path(match)]
 
                     fecha = clean_data[value_path]
-                    periodo = f"{fecha}T{value['periodo']}:00:00"
+                    periodo = f"{fecha[:10]}T{value['periodo']}:00:00"
 
                     if periodo not in clean_data.keys():
                         clean_data[periodo] = {ATTR_FORECAST_TIME: periodo}
