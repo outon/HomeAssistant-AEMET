@@ -217,4 +217,4 @@ ICONS_URL = "www.aemet.es/imagenes_gcd/_iconos_municipios/{}.png"
 WIND_DIRECTIONS = dict(C=None, N="N", NNE="NNE", NE="NE", ENE="ENE", E="E", ESE="ESE", SE="SE", SSE="SSE", S="S",
                        SSO="SSW", SO="SW", OSO="WSW", O="W", ONO="WNW", NO="NW", NNO="NNW")
 
-MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=5)
+MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=10)
