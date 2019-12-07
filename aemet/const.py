@@ -211,7 +211,9 @@ MAP_CONDITION = {
     "73":  "snowy",                # Muy nuboso con nieve escasa
     "74":  "snowy",                # Cubierto con nieve escasa
     "81":  "fog",                  # Niebla
+    "81n": "fog",
     "82":  "fog",                  # Bruma - Neblina
+    "82n": "fog",
     "83":  "calima",               # Calima
 }
 
