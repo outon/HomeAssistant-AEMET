@@ -166,7 +166,9 @@ MAP_CONDITION = {
     "14":  "cloudy",               # Nuboso
     "14n": "cloudy",
     "15":  "cloudy",               # Muy nuboso
+    "15n": "cloudy",
     "16":  "cloudy",               # Cubierto
+    "16n": "cloudy",
     "17":  "cloudy",               # Nubes altas
     "17n": "cloudy",
     "23":  "rainy",                # Intervalos nubosos con lluvia
@@ -189,6 +191,7 @@ MAP_CONDITION = {
     "44n": "partlycloudy",
     "45":  "cloudy",               # Muy nuboso con lluvia escasa
     "46":  "cloudy",               # Cubierto con lluvia escasa
+    "46n": "cloudy",
     "51":  "lightning",            # Intervalos nubosos con tormenta
     "51n": "lightning",
     "52":  "lightning",            # Nuboso con tormenta
