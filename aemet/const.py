@@ -33,7 +33,24 @@ Information for cities:
 
 from datetime import timedelta
 
+DEFAULT_NAME = "AEMET"
 DEFAULT_CACHE_DIR = "aemet"
+FORECAST_MODE = ["hourly", "daily"]
+DEFAULT_FORECAST_MODE = "daily"
+
+# Configuration options
+CONF_API_KEY = "api_key"
+CONF_ELEVATION = "elevation"
+CONF_LATITUDE = "latitude"
+CONF_LONGITUDE = "longitude"
+CONF_MODE = "mode"
+CONF_NAME = "name"
+
+CONF_CACHE_DIR = "cache_dir"
+CONF_SET_WEATHER_STATION = "weather_station"
+CONF_SET_CITY = "city"
+CONF_EXPERIMENTAL = "experimental"
+# CONF_SCAN_INTERVAL = "scan_interval"
 
 # Weather/Forecast attributes
 ATTR_CONDITION_CLASS = "condition_class"
@@ -156,6 +173,7 @@ FLOAT_SENSORS = (
     ATTR_FORECAST_THERMAL_SENSATION,
     ATTR_FORECAST_TEMP,
 )
+
 MAP_CONDITION = {
     "11":  "sunny",                # Despejado
     "11n": "clear-night",          # Despejado Noche
