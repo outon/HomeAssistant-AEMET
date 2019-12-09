@@ -507,8 +507,7 @@ class AemetForecast:
         def clean_daily(forecast):
             parser = jp.parse("[*].fecha")
             clean_data = [
-                {ATTR_FORECAST_TIME: match.value}
-                for match in parser.find(forecast)
+                {ATTR_FORECAST_TIME: match.value} for match in parser.find(forecast)
             ]
 
             path = "[*].{}"
