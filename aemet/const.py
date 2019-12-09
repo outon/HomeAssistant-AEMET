@@ -2,24 +2,44 @@
 
 For weather stations:
     alt   : Altitude of the station in meters
-    dmax  : Maximum wind direction recorded in the 60 minutes prior to the time indicated by 'fint' (degrees)
-    dv    : Average wind direction, in the 10-minute period preceding the date indicated by 'fint' (degrees)
-    fint  : Date end time of the observation period, this is data from the period of the hour preceding that indicated by this field (UTC time)
-    hr    : Instantaneous relative humidity of the air corresponding to the date given by 'fint' (%)
+    dmax  : Maximum wind direction recorded in the 60 minutes prior to
+            the time indicated by 'fint' (degrees)
+    dv    : Average wind direction, in the 10-minute period preceding
+            the date indicated by 'fint' (degrees)
+    fint  : Date end time of the observation period, this is data from
+            the period of the hour preceding that indicated by this
+            field (UTC time)
+    hr    : Instantaneous relative humidity of the air corresponding to
+            the date given by 'fint' (%)
     idema : Automatic weather station weather indicator
     lat   : Latitude of the weather station (degrees)
     lon   : Longitude of weather station (degrees)
-    nieve : Snow layer thickness measured in the 10 minutes prior to the date indicated by 'fint' (cm)
-    prec  : Accumulated precipitation, measured by the rain gauge, during the previous 60 minutes at the time indicated by the observation period 'fint' (mm, equivalent to l/m2)
-    pres  : Instantaneous pressure at the level at which the barometer is installed and corresponding to the date given by 'fint' (hPa)
-    ta    : Instantaneous air temperature corresponding to the date given by 'fint' (degrees Celsius)
-    tamax : Maximum air temperature, the maximum value of the 60 instantaneous 'ta' values measured in the 60-minute period preceding the time indicated by the observation period 'fint' (degrees Celsius)
-    tamin : Minimum air temperature, the minimum value of the 60 instantaneous 'ta' values measured in the 60-minute period preceding the time indicated by the observation period 'fint' (degrees Celsius)
-    tpr   : Calculated dew point temperature corresponding to the 'fint' date (degrees Celsius)
+    nieve : Snow layer thickness measured in the 10 minutes prior to the
+            date indicated by 'fint' (cm)
+    prec  : Accumulated precipitation, measured by the rain gauge,
+            during the previous 60 minutes at the time indicated by the
+            observation period 'fint' (mm, equivalent to l/m2)
+    pres  : Instantaneous pressure at the level at which the barometer is
+            installed and corresponding to the date given by 'fint' (hPa)
+    ta    : Instantaneous air temperature corresponding to the date given
+            by 'fint' (degrees Celsius)
+    tamax : Maximum air temperature, the maximum value of the 60 instantaneous
+            'ta' values measured in the 60-minute period preceding the time
+            indicated by the observation period 'fint' (degrees Celsius)
+    tamin : Minimum air temperature, the minimum value of the 60 instantaneous
+            'ta' values measured in the 60-minute period preceding the time
+            indicated by the observation period 'fint' (degrees Celsius)
+    tpr   : Calculated dew point temperature corresponding to the 'fint' date
+            (degrees Celsius)
     ubi   : Station location. Station name
-    vis   : Visibility, average of the visibility measurement corresponding to the 10 minutes prior to the date given by 'fint' (Km)
-    vmax  : Maximum wind speed, maximum value of the wind maintained 3 seconds and recorded in the 60 minutes preceding the time indicated by the observation period 'fint' (m/s)
-    vv    : Average wind speed, average scalar of samples acquired every 0.25 or 1 second in the 10-minute period preceding that indicated by 'fint' (m/s)
+    vis   : Visibility, average of the visibility measurement corresponding to
+            the 10 minutes prior to the date given by 'fint' (Km)
+    vmax  : Maximum wind speed, maximum value of the wind maintained 3 seconds
+            and recorded in the 60 minutes preceding the time indicated by the
+            observation period 'fint' (m/s)
+    vv    : Average wind speed, average scalar of samples acquired every 0.25
+            or 1 second in the 10-minute period preceding that indicated by
+            'fint' (m/s)
 
 Information for cities:
     altitud :      Altitude of the town in meters
