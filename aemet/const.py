@@ -214,7 +214,9 @@ MAP_CONDITION = {
     "24":  "rainy",                # Nuboso con lluvia
     "24n": "rainy",
     "25":  "rainy",                # Muy nuboso con lluvia
+    "25n": "rainy",
     "26":  "rainy",                # Cubierto con lluvia
+    "26n": "rainy",
     "27":  "pouring",              # Chubascos
     "27n": "pouring",
     "33":  "snowy",                # Intervalos nubosos con nieve
