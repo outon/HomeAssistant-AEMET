@@ -2,24 +2,44 @@
 
 For weather stations:
     alt   : Altitude of the station in meters
-    dmax  : Maximum wind direction recorded in the 60 minutes prior to the time indicated by 'fint' (degrees)
-    dv    : Average wind direction, in the 10-minute period preceding the date indicated by 'fint' (degrees)
-    fint  : Date end time of the observation period, this is data from the period of the hour preceding that indicated by this field (UTC time)
-    hr    : Instantaneous relative humidity of the air corresponding to the date given by 'fint' (%)
+    dmax  : Maximum wind direction recorded in the 60 minutes prior to
+            the time indicated by 'fint' (degrees)
+    dv    : Average wind direction, in the 10-minute period preceding
+            the date indicated by 'fint' (degrees)
+    fint  : Date end time of the observation period, this is data from
+            the period of the hour preceding that indicated by this
+            field (UTC time)
+    hr    : Instantaneous relative humidity of the air corresponding to
+            the date given by 'fint' (%)
     idema : Automatic weather station weather indicator
     lat   : Latitude of the weather station (degrees)
     lon   : Longitude of weather station (degrees)
-    nieve : Snow layer thickness measured in the 10 minutes prior to the date indicated by 'fint' (cm)
-    prec  : Accumulated precipitation, measured by the rain gauge, during the previous 60 minutes at the time indicated by the observation period 'fint' (mm, equivalent to l/m2)
-    pres  : Instantaneous pressure at the level at which the barometer is installed and corresponding to the date given by 'fint' (hPa)
-    ta    : Instantaneous air temperature corresponding to the date given by 'fint' (degrees Celsius)
-    tamax : Maximum air temperature, the maximum value of the 60 instantaneous 'ta' values measured in the 60-minute period preceding the time indicated by the observation period 'fint' (degrees Celsius)
-    tamin : Minimum air temperature, the minimum value of the 60 instantaneous 'ta' values measured in the 60-minute period preceding the time indicated by the observation period 'fint' (degrees Celsius)
-    tpr   : Calculated dew point temperature corresponding to the 'fint' date (degrees Celsius)
+    nieve : Snow layer thickness measured in the 10 minutes prior to the
+            date indicated by 'fint' (cm)
+    prec  : Accumulated precipitation, measured by the rain gauge,
+            during the previous 60 minutes at the time indicated by the
+            observation period 'fint' (mm, equivalent to l/m2)
+    pres  : Instantaneous pressure at the level at which the barometer is
+            installed and corresponding to the date given by 'fint' (hPa)
+    ta    : Instantaneous air temperature corresponding to the date given
+            by 'fint' (degrees Celsius)
+    tamax : Maximum air temperature, the maximum value of the 60 instantaneous
+            'ta' values measured in the 60-minute period preceding the time
+            indicated by the observation period 'fint' (degrees Celsius)
+    tamin : Minimum air temperature, the minimum value of the 60 instantaneous
+            'ta' values measured in the 60-minute period preceding the time
+            indicated by the observation period 'fint' (degrees Celsius)
+    tpr   : Calculated dew point temperature corresponding to the 'fint' date
+            (degrees Celsius)
     ubi   : Station location. Station name
-    vis   : Visibility, average of the visibility measurement corresponding to the 10 minutes prior to the date given by 'fint' (Km)
-    vmax  : Maximum wind speed, maximum value of the wind maintained 3 seconds and recorded in the 60 minutes preceding the time indicated by the observation period 'fint' (m/s)
-    vv    : Average wind speed, average scalar of samples acquired every 0.25 or 1 second in the 10-minute period preceding that indicated by 'fint' (m/s)
+    vis   : Visibility, average of the visibility measurement corresponding to
+            the 10 minutes prior to the date given by 'fint' (Km)
+    vmax  : Maximum wind speed, maximum value of the wind maintained 3 seconds
+            and recorded in the 60 minutes preceding the time indicated by the
+            observation period 'fint' (m/s)
+    vv    : Average wind speed, average scalar of samples acquired every 0.25
+            or 1 second in the 10-minute period preceding that indicated by
+            'fint' (m/s)
 
 Information for cities:
     altitud :     Altitude of the town in meters
@@ -33,7 +53,24 @@ Information for cities:
 
 from datetime import timedelta
 
+DEFAULT_NAME = "AEMET"
 DEFAULT_CACHE_DIR = "aemet"
+FORECAST_MODE = ["hourly", "daily"]
+DEFAULT_FORECAST_MODE = "daily"
+
+# Configuration options
+CONF_API_KEY = "api_key"
+CONF_ELEVATION = "elevation"
+CONF_LATITUDE = "latitude"
+CONF_LONGITUDE = "longitude"
+CONF_MODE = "mode"
+CONF_NAME = "name"
+
+CONF_CACHE_DIR = "cache_dir"
+CONF_SET_WEATHER_STATION = "weather_station"
+CONF_SET_CITY = "city"
+CONF_EXPERIMENTAL = "experimental"
+# CONF_SCAN_INTERVAL = "scan_interval"
 
 # Weather/Forecast attributes
 ATTR_CONDITION_CLASS = "condition_class"
@@ -170,12 +207,16 @@ MAP_CONDITION = {
     "13":  "partlycloudy",         # Intervalos nubosos
     "14":  "cloudy",               # Nuboso
     "15":  "cloudy",               # Muy nuboso
+    "15n": "cloudy",
     "16":  "cloudy",               # Cubierto
+    "16n": "cloudy",
     "17":  "cloudy",               # Nubes altas
     "23":  "rainy",                # Intervalos nubosos con lluvia
     "24":  "rainy",                # Nuboso con lluvia
     "25":  "rainy",                # Muy nuboso con lluvia
+    "25n": "rainy",
     "26":  "rainy",                # Cubierto con lluvia
+    "26n": "rainy",
     "27":  "pouring",              # Chubascos
     "33":  "snowy",                # Intervalos nubosos con nieve
     "34":  "snowy",                # Nuboso con nieve
@@ -185,6 +226,7 @@ MAP_CONDITION = {
     "44":  "partlycloudy",         # Nuboso con lluvia escasa
     "45":  "cloudy",               # Muy nuboso con lluvia escasa
     "46":  "cloudy",               # Cubierto con lluvia escasa
+    "46n": "cloudy",
     "51":  "lightning",            # Intervalos nubosos con tormenta
     "52":  "lightning",            # Nuboso con tormenta
     "53":  "lightning",            # Muy nuboso con tormenta
@@ -198,7 +240,9 @@ MAP_CONDITION = {
     "73":  "snowy",                # Muy nuboso con nieve escasa
     "74":  "snowy",                # Cubierto con nieve escasa
     "81":  "fog",                  # Niebla
-    "82":  "mist",                 # Bruma - Neblina
+    "81n": "fog",
+    "82":  "fog",                  # Bruma - Neblina
+    "82n": "fog",
     "83":  "calima",               # Calima
 }
 
@@ -207,4 +251,4 @@ ICONS_URL = "www.aemet.es/imagenes_gcd/_iconos_municipios/{}.png"
 WIND_DIRECTIONS = dict(C=None, N="N", NNE="NNE", NE="NE", ENE="ENE", E="E", ESE="ESE", SE="SE", SSE="SSE", S="S",
                        SSO="SSW", SO="SW", OSO="WSW", O="W", ONO="WNW", NO="NW", NNO="NNW")
 
-MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=5)
+MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=10)

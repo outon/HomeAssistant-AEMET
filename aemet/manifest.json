@@ -7,6 +7,8 @@
   "requirements": [
     "vincenty",
     "jsonpath-rw",
-    "jsonpath-rw-ext"
+    "jsonpath-rw-ext",
+    "jsonpath_rw",
+    "jsonpath_rw-ext"
   ]
 }

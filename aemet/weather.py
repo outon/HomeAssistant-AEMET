@@ -21,10 +21,7 @@ from homeassistant.util import Throttle
 from .aemet import AemetData
 from .const import *
 
-DEFAULT_NAME = "AEMET"
 _LOGGER = logging.getLogger(__name__)
-
-FORECAST_MODE = ["hourly", "daily"]
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
@@ -32,12 +29,12 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_LATITUDE): cv.latitude,
         vol.Optional(CONF_LONGITUDE): cv.longitude,
         vol.Optional(CONF_ELEVATION): cv.small_float,
-        vol.Optional(CONF_MODE, default="daily"): vol.In(FORECAST_MODE),
-        vol.Optional("cache_dir", default=DEFAULT_CACHE_DIR): cv.string,
-        vol.Optional("weather_station"): cv.string,
-        vol.Optional("city"): cv.string,
+        vol.Optional(CONF_MODE, default=DEFAULT_FORECAST_MODE): vol.In(FORECAST_MODE),
+        vol.Optional(CONF_CACHE_DIR, default=DEFAULT_CACHE_DIR): cv.string,
+        vol.Optional(CONF_SET_WEATHER_STATION): cv.string,
+        vol.Optional(CONF_SET_CITY): cv.string,
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
-        vol.Optional("experimental", default=False): cv.boolean,
+        vol.Optional(CONF_EXPERIMENTAL, default=False): cv.boolean,
     }
 )
 
@@ -336,7 +333,7 @@ class AemetWeather(WeatherEntity):
                     ATTR_FORECAST_TEMP_LOW: entry.get(ATTR_FORECAST_TEMP_LOW),
                     ATTR_FORECAST_PRECIPITATION: entry.get(ATTR_FORECAST_PRECIPITATION),
                     ATTR_FORECAST_CONDITION: MAP_CONDITION.get(condition,
-                        MAP_CONDITION(condition[:2], entry.get(ATTR_WEATHER_DESCRIPTION)),
+                        MAP_CONDITION(condition[:2], entry.get(ATTR_WEATHER_DESCRIPTION, "")),
                     ),
                     ATTR_FORECAST_WIND_SPEED: self.retrieve_forecast_subday(
                         entry, ATTR_FORECAST_WIND_SPEED
