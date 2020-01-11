@@ -22,11 +22,11 @@ For weather stations:
     vv    : Average wind speed, average scalar of samples acquired every 0.25 or 1 second in the 10-minute period preceding that indicated by 'fint' (m/s)
 
 Information for cities:
-    altitud :      Altitude of the town in meters
-    id :           City Code designated by INE (Instituto nacional de estadistica)
-    latitud_dec:   Latitude of the town (degrees)
-    longitud_dec": Longitude of the town (degrees)
-    nombre :       Name of town
+    altitud :     Altitude of the town in meters
+    id :          City Code designated by INE (Instituto nacional de estadistica)
+    latitud_dec:  Latitude of the town (degrees)
+    longitud_dec: Longitude of the town (degrees)
+    nombre :      Name of town
 
     other sensors exists, but are not of our interest.
 """
@@ -38,8 +38,10 @@ DEFAULT_CACHE_DIR = "aemet"
 # Weather/Forecast attributes
 ATTR_CONDITION_CLASS = "condition_class"
 ATTR_FORECAST = "forecast"
+ATTR_FORECAST_DESCRIPTION = "description"
 ATTR_FORECAST_CONDITION = "condition"
 ATTR_FORECAST_HUMIDITY = "humidity"
+ATTR_FORECAST_HUMIDITY_MIN = "humidity min"
 ATTR_FORECAST_PRECIPITATION = "precipitation"
 ATTR_FORECAST_SNOW = "snow"
 ATTR_FORECAST_TEMP = "temperature"
@@ -49,6 +51,8 @@ ATTR_FORECAST_TIME = "datetime"
 ATTR_FORECAST_UV_INDEX = "UV index"
 ATTR_FORECAST_WIND_BEARING = "wind_bearing"
 ATTR_FORECAST_WIND_SPEED = "wind_speed"
+ATTR_FORECAST_WIND_GUST = "maximum gust"
+
 ATTR_WEATHER_ATTRIBUTION = "attribution"
 ATTR_WEATHER_CONDITION = "condition"
 ATTR_WEATHER_DESCRIPTION = "description"
@@ -70,6 +74,7 @@ ATTR_WEATHER_WIND_SPEED = "wind_speed"
 # Units
 TEMP_CELSIUS = "°C"
 TEMP_FAHRENHEIT = "°F"
+
 PRESSURE_PA = "Pa"
 PRESSURE_HPA = "hPa"
 PRESSURE_BAR = "bar"
@@ -120,33 +125,34 @@ FIELD_MAPPINGS = dict(
 )
 
 DAILY_SENSORS_CONVERT = {
-    # SENSOR:                    [jsonpath,               field]
-    "precipitation probability": ["probPrecipitacion[*]", "value"],
-    "snow level": ["cotaNieveProv.[*]", "value"],
-    ATTR_WEATHER_DESCRIPTION: ["estadoCielo[*]", "descripcion"],
-    ATTR_FORECAST_CONDITION: ["estadoCielo[*]", "value"],
-    ATTR_FORECAST_WIND_BEARING: ["viento[*]", "direccion"],
-    ATTR_FORECAST_WIND_SPEED: ["viento[*]", "velocidad"],
-    "maximum gust": ["rachaMax[*]", "value"],
-    ATTR_FORECAST_TEMP: ["temperatura", "maxima"],
-    ATTR_FORECAST_TEMP_LOW: ["temperatura", "minima"],
-    "thermal sensation maximum": ["sensTermica", "maxima"],
-    "thermal sensation minimum": ["sensTermica", "minima"],
-    ATTR_FORECAST_HUMIDITY: ["humedadRelativa", "maxima"],
-    "humidity min": ["humedadRelativa", "minima"],
-    ATTR_FORECAST_UV_INDEX: ["uvMax", ""],
+    # SENSOR:                        [jsonpath,               field]
+    "precipitation probability":     ["probPrecipitacion[*]", "value"],
+    "snow level":                    ["cotaNieveProv.[*]",    "value"],
+    ATTR_WEATHER_DESCRIPTION:        ["estadoCielo[*]",       "descripcion"],
+    ATTR_FORECAST_CONDITION:         ["estadoCielo[*]",       "value"],
+    ATTR_FORECAST_WIND_BEARING:      ["viento[*]",            "direccion"],
+    ATTR_FORECAST_WIND_SPEED:        ["viento[*]",            "velocidad"],
+    ATTR_FORECAST_WIND_GUST:         ["rachaMax[*]",          "value"],
+    ATTR_FORECAST_TEMP:              ["temperatura",          "maxima"],
+    ATTR_FORECAST_TEMP_LOW:          ["temperatura",          "minima"],
+    "thermal sensation maximum":     ["sensTermica",          "maxima"],
+    "thermal sensation minimum":     ["sensTermica",          "minima"],
+    ATTR_FORECAST_HUMIDITY:          ["humedadRelativa",      "maxima"],
+    ATTR_FORECAST_HUMIDITY_MIN:      ["humedadRelativa",      "minima"],
+    ATTR_FORECAST_UV_INDEX:          ["uvMax",                ""],
 }
 
 HOURLY_SENSORS_CONVERT = {
-    ATTR_FORECAST_CONDITION: ["estadoCielo[*]", "value"],
-    "description": ["estadoCielo[*]", "descripcion"],
-    ATTR_FORECAST_PRECIPITATION: ["precipitacion[*]", "value"],
-    ATTR_FORECAST_SNOW: ["nieve[*]", "value"],
-    ATTR_FORECAST_TEMP: ["temperatura[*]", "value"],
-    ATTR_FORECAST_THERMAL_SENSATION: ["sensTermica[*]", "value"],
-    ATTR_FORECAST_HUMIDITY: ["humedadRelativa[*]", "value"],
-    ATTR_FORECAST_WIND_BEARING: ["vientoAndRachaMax[*]", "direccion"],
-    ATTR_FORECAST_WIND_SPEED: ["vientoAndRachaMax[*]", "velocidad"],
+    # SENSOR:                        [jsonpath,               field]
+    ATTR_FORECAST_CONDITION:         ["estadoCielo[*]",       "value"],
+    ATTR_FORECAST_DESCRIPTION:       ["estadoCielo[*]",       "descripcion"],
+    ATTR_FORECAST_PRECIPITATION:     ["precipitacion[*]",     "value"],
+    ATTR_FORECAST_SNOW:              ["nieve[*]",             "value"],
+    ATTR_FORECAST_TEMP:              ["temperatura[*]",       "value"],
+    ATTR_FORECAST_THERMAL_SENSATION: ["sensTermica[*]",       "value"],
+    ATTR_FORECAST_HUMIDITY:          ["humedadRelativa[*]",   "value"],
+    ATTR_FORECAST_WIND_BEARING:      ["vientoAndRachaMax[*]", "direccion"],
+    ATTR_FORECAST_WIND_SPEED:        ["vientoAndRachaMax[*]", "velocidad"],
 }
 
 FLOAT_SENSORS = (
@@ -156,55 +162,39 @@ FLOAT_SENSORS = (
     ATTR_FORECAST_THERMAL_SENSATION,
     ATTR_FORECAST_TEMP,
 )
+
 MAP_CONDITION = {
     "11":  "sunny",                # Despejado
     "11n": "clear-night",          # Despejado Noche
     "12":  "partlycloudy",         # Poco nuboso
-    "12n": "partlycloudy",
     "13":  "partlycloudy",         # Intervalos nubosos
-    "13n": "partlycloudy",
     "14":  "cloudy",               # Nuboso
-    "14n": "cloudy",
     "15":  "cloudy",               # Muy nuboso
     "16":  "cloudy",               # Cubierto
     "17":  "cloudy",               # Nubes altas
-    "17n": "cloudy",
     "23":  "rainy",                # Intervalos nubosos con lluvia
-    "23n": "rainy",
     "24":  "rainy",                # Nuboso con lluvia
-    "24n": "rainy",
     "25":  "rainy",                # Muy nuboso con lluvia
     "26":  "rainy",                # Cubierto con lluvia
     "27":  "pouring",              # Chubascos
-    "27n": "pouring",
     "33":  "snowy",                # Intervalos nubosos con nieve
-    "33n": "snowy",
     "34":  "snowy",                # Nuboso con nieve
-    "34n": "snowy",
     "35":  "snowy",                # Muy nuboso con nieve
     "36":  "snowy",                # Cubierto con nieve
     "43":  "partlycloudy",         # Intervalos nubosos con lluvia escasa
-    "43n": "partlycloudy",
     "44":  "partlycloudy",         # Nuboso con lluvia escasa
-    "44n": "partlycloudy",
     "45":  "cloudy",               # Muy nuboso con lluvia escasa
     "46":  "cloudy",               # Cubierto con lluvia escasa
     "51":  "lightning",            # Intervalos nubosos con tormenta
-    "51n": "lightning",
     "52":  "lightning",            # Nuboso con tormenta
-    "52n": "lightning",
     "53":  "lightning",            # Muy nuboso con tormenta
     "54":  "lightning",            # Cubierto con tormenta
     "61":  "lightning-rainy",      # Intervalos nubosos con tormenta y lluvia escasa
-    "61n": "lightning-rainy",
     "62":  "lightning-rainy",      # Nuboso con tormenta y lluvia escasa
-    "62n": "lightning-rainy",
     "63":  "lightning-rainy",      # Muy nuboso con tormenta y lluvia escasa
     "64":  "lightning-rainy",      # Cubierto con tormenta y lluvia escasa
     "71":  "partlycloudy",         # Intervalos nubosos con nieve escasa
-    "71n": "partlycloudy",
     "72":  "snowy",                # Nuboso con nieve escasa
-    "72n": "snowy",
     "73":  "snowy",                # Muy nuboso con nieve escasa
     "74":  "snowy",                # Cubierto con nieve escasa
     "81":  "fog",                  # Niebla
