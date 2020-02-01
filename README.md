@@ -42,7 +42,7 @@ weather:
 #### Config options
 The following table shows all the options that can be used to configure your component.
 
-There is only one mandatory parameter `apy_key`, any other parameter is optional.
+There is only one mandatory parameter `api_key`, any other parameter is optional.
 
 | key | required | default value | description
 | --- | :---: | :---: | ---
