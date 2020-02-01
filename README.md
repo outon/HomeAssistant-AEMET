@@ -70,6 +70,7 @@ You should go to: https://opendata.aemet.es
 On section "Obtención de API Key" you should click on "Solicitar"
 
 ![https://opendata.aemet.es](https://user-images.githubusercontent.com/6525261/64166305-17466500-ce47-11e9-9830-5ba1ff05fa80.png)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fouton%2FHomeAssistant-AEMET.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fouton%2FHomeAssistant-AEMET?ref=badge_shield)
 
 Once you enter your email in next screen you will receive an email from opendata_apikey@aemet.es to verify your email address and a link to request your api key.
 
@@ -113,3 +114,7 @@ AEMET produces forecast data for:
 * Day D+4:  Sensos get information for whole day.
 
 We present information on daily basis except for current day that will present the information from 6 hour interval.
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fouton%2FHomeAssistant-AEMET.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fouton%2FHomeAssistant-AEMET?ref=badge_large)
