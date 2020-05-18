@@ -248,7 +248,24 @@ MAP_CONDITION = {
 
 ICONS_URL = "www.aemet.es/imagenes_gcd/_iconos_municipios/{}.png"
 
-WIND_DIRECTIONS = dict(C=None, N="N", NNE="NNE", NE="NE", ENE="ENE", E="E", ESE="ESE", SE="SE", SSE="SSE", S="S",
-                       SSO="SSW", SO="SW", OSO="WSW", O="W", ONO="WNW", NO="NW", NNO="NNW")
+WIND_DIRECTIONS = {
+    "C":     None,
+    "N":      0.0,
+    "NNE":   22.5,
+    "NE":    45.0,
+    "ENE":   67.5,
+    "E":     90.0,
+    "ESE":  112.5,
+    "SE":   135.0,
+    "SSE":  157.5,
+    "S":    180.0,
+    "SSW":  202.5,
+    "SW":   225.0,
+    "WSW":  247.5,
+    "W":    270.0,
+    "WNW":  292.5,
+    "NW":   315.0,
+    "NNW":  337.5,
+}
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=10)

@@ -247,7 +247,13 @@ class AemetWeather(WeatherEntity):
         value = self._aemet_data["currently"]["data"].get(ATTR_WEATHER_WIND_BEARING)
         if value is None:
             value = self._aemet_forecast_current_hour.get(ATTR_WEATHER_WIND_BEARING)
-        return WIND_DIRECTIONS.get(value)
+
+        if isinstance(value, str):
+            valor = WIND_DIRECTIONS.get(value)
+        else:
+            valor = value
+
+        return valor
 
     @property
     def ozone(self):
