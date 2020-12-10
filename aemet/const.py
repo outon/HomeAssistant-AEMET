@@ -161,6 +161,8 @@ FIELD_MAPPINGS = dict(
     vv=ATTR_WEATHER_WIND_SPEED,
 )
 
+MS_TO_KMH_ATTRS = [ATTR_WEATHER_WIND_SPEED]
+
 DAILY_SENSORS_CONVERT = {
     # SENSOR:                        [jsonpath,               field]
     "precipitation probability":     ["probPrecipitacion[*]", "value"],
