@@ -653,6 +653,10 @@ class AemetWeather:
             if key in FIELD_MAPPINGS:
                 mapped_key = FIELD_MAPPINGS[key]
                 translated[mapped_key] = value
+        # Convert wind_speed and wind_max_speed from m/s to km/h        
+        for attr in MS_TO_KMH_ATTRS:
+            if attr in translated:
+                translated[attr] = round(translated[attr] * 3.6, 1) # m/s to km/h
         return translated
 
     def _clean_currently_data(self, raw_data):
