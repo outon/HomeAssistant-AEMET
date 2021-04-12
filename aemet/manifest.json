@@ -3,6 +3,7 @@
   "name": "Agencia estatal de meteorologia",
   "documentation": "https://github.com/outon/HomeAssistant-AEMET",
   "dependencies": [],
+  "version": "2021.4"
   "codeowners": ["@outon"],
   "requirements": [
     "vincenty",
