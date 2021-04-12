@@ -1,5 +1,12 @@
 # HomeAssistant-AEMET
 
+## IMPORTANT NOTICE:
+Home Assistant now has [native support for AEMET](https://www.home-assistant.io/integrations/aemet/), so development of this component is stopped.
+
+## NOTA IMPORTANTE:
+Home Assistant ahora soporta [AEMET de forma nativa](https://www.home-assistant.io/integrations/aemet/), así que el desarrollo de este componente está parado.
+
+
 A Home Assistant custom-component that retrieves current information and weather forecasts published by [AEMET](http://www.aemet.es) (**A**gencia **e**statal de **met**eorología).
 
 ⚠️ As this is the Spanish governmental meteorological agency, only information on locations in Spain is published. ⚠️ 
